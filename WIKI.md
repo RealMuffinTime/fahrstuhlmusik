@@ -10,4 +10,4 @@ For a support channel or also if you only like listening to elevator music.
 Hope you have fun... with this bot.\
 Support & Bugs on: <https://discord.gg/Da9haye/>
 
-by MuffinTime#4484
+by **MuffinTime#4484**
