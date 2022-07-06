@@ -1,0 +1,8 @@
+.db
+.idea
+.versions
+.test
+__pycache__
+log
+secret_dev.py
+secret_master.py
