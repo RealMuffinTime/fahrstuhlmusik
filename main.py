@@ -1,8 +1,8 @@
 import asyncio
+import aiohttp
 import datetime
 import textwrap
 import discord
-import requests
 import utils
 from discord.ext import commands
 from discord.utils import get
@@ -441,26 +441,28 @@ async def update_guild_count():
 
     if utils.secret.secret == "master":
         sites = utils.secret.lists
-        for site in sites:
-            try:
-                post_request = requests.post(url=site[3] % str(get_bot().user.id),
-                                             headers={'Authorization': site[4],
-                                                      'Content-Type': 'application/json'},
-                                             json={site[5]: guild_count})
 
-                if post_request is None:
-                    site[7] = "Error"
-                elif post_request.status_code == site[6]:
-                    if str(post_request.text).startswith('{"error":true,'):
-                        site[7] = textwrap.shorten(str(post_request.text), width=50)
+        async def request(site, session):
+            try:
+                async with session.post(url=site[3] % str(get_bot().user.id),
+                                        headers={'Authorization': site[4], 'Content-Type': 'application/json'},
+                                        json={site[5]: len(get_bot().guilds)}) as response:
+                    if response is None:
+                        site[7] = "Error"
+                    elif response.status == site[6]:
+                        if str(await response.text()).startswith('{"error":true,'):
+                            site[7] = textwrap.shorten(str(await response.text()), width=50)
+                        else:
+                            site[7] = "Ok"
                     else:
-                        site[7] = "Ok"
-                else:
-                    site[7] = textwrap.shorten(str(post_request.status_code), width=50)
+                        site[7] = textwrap.shorten(str(response.status), width=50)
 
             except Exception as e:
                 site[7] = "Error"
                 utils.on_error("update_guild_count()", str(e).strip('.'))
+
+        async with aiohttp.ClientSession() as session1:
+            await asyncio.gather(*[asyncio.ensure_future(request(site, session1)) for site in sites])
 
         status = ""
         for site in sites:
@@ -469,6 +471,7 @@ async def update_guild_count():
                 status += ", "
             else:
                 status += "."
+
         utils.log("info", f"Currently serving {str(guild_count)} guilds.", f"Updated " + status)
 
 
