@@ -8,25 +8,28 @@ from discord.ext import commands
 from discord.utils import get
 from discord_slash import SlashCommand
 
-# TODO website and statistics
-# TODO Licensed track
-# TODO move command - own channel which moves down and up (this one moves users form one to another channel, plays fitting sounds (door closes/opens, moving, elevator music) at the end it moves to its saved channel)
-# TODO settings command
-#
 # TODO tests for performance improvements ???
 # TODO find a fix for task was destroyed but was pending
 # TODO find a fix for cannot write to closing transport
 #
+# TODO licensed track
+# TODO website and statistics
+# TODO move command - own channel which moves down and up (this one moves users form one to another channel, plays fitting sounds (door closes/opens, moving, elevator music) at the end it moves to its saved channel)
+# TODO settings command
+#
 # TODO special events at special days
+# TODO open sauce?
+#
 # TODO donate command
-# TODO implement shards
-# TODO Open sauce?
+# TODO (implement shards)
 
 
-# Version 1.2.4 ->
+# Version 1.2.4 -> 2.0.0
 #
 # New stuff
 #  -
+# Breaking Changes
+#  - Complete rework of the way the bot plays music
 # Changes
 #  - Rework of guild count update
 #  - Background improvements
@@ -70,10 +73,14 @@ async def on_ready():
     utils.get_start_timestamp()
     utils.log("info", f"Logged in as {str(get_bot().user)}.")
     await get_bot().change_presence(activity=discord.Activity(name="elevatorinfo", type=discord.ActivityType.listening))
+
     for guild in get_bot().guilds:
         await utils.execute_sql(f"INSERT IGNORE INTO set_guilds VALUES ('{guild.id}', '0', NULL, NULL, NULL)", False)
     await update_guild_count()
-    await music()
+
+    playing_guilds = await utils.execute_sql("SELECT guild_id FROM set_guilds WHERE playing = 1;", True)
+    for row in playing_guilds:
+        await resume_music(row[0], still_playing=False)
 
 
 @get_bot().event
@@ -147,23 +154,26 @@ async def on_voice_state_update(member, before, after):
                 await utils.execute_sql(
                     f"UPDATE set_guilds SET playing = '1', channel_id = '{before.channel.id}' WHERE guild_id = '{member.guild.id}';",
                     False)
+                await resume_music(member.guild.id)
                 return
         else:
             await utils.execute_sql(
-                f"UPDATE set_guilds SET playing = '0', channel_id = NONE WHERE guild_id = '{member.guild.id}';",
+                f"UPDATE set_guilds SET playing = '0', channel_id = Null WHERE guild_id = '{member.guild.id}';",
                 False)
+            await stop_music(member.guild.id)
+            return
         if after.channel.id != before.channel.id:
             await utils.execute_sql(
                 f"UPDATE set_guilds SET playing = '1', channel_id = '{after.channel.id}' WHERE guild_id = '{member.guild.id}';",
                 False)
-            return
-    else:
-        voice = get(get_bot().voice_clients, guild=member.guild)
-        if voice is not None:
-            if voice.is_paused() and (len(voice.channel.voice_states.keys()) > 1):
-                voice.resume()
-            if voice.is_playing() and (len(voice.channel.voice_states.keys()) <= 1):
-                voice.pause()
+            await resume_music(member.guild.id)
+
+    voice = get(get_bot().voice_clients, guild=member.guild)
+    if voice is not None:
+        if voice.is_paused() and (len(voice.channel.voice_states.keys()) > 1):
+            await resume_music(member.guild.id)
+        if voice.is_playing() and (len(voice.channel.voice_states.keys()) <= 1):
+            await pause_music(member.guild.id)
 
 
 @get_slash().slash(name="elevatorinfo")
@@ -289,9 +299,8 @@ async def elevator_music(ctx):
         await utils.execute_sql(
             f"UPDATE set_guilds SET playing = '1', channel_id = '{ctx.author.voice.channel.id}' WHERE guild_id = '{ctx.guild.id}';",
             False)
+        await resume_music(ctx.guild.id, still_playing=False)
         await utils.execute_sql("INSERT INTO stat_command_music (action) VALUES ('executed');", False)
-
-        utils.log("info", f"Started playing on guild '{ctx.guild.id}' in channel '{ctx.author.voice.channel.id}'.")
 
     except Exception as e:
         await send_message(channel=ctx.channel, author=ctx.author,
@@ -334,12 +343,8 @@ async def elevator_shutdown(ctx):
                            delete=10)
         await utils.execute_sql(
             f"UPDATE set_guilds SET playing = '0', channel_id = NULL WHERE guild_id = '{ctx.guild.id}';", False)
+        await stop_music(ctx.guild.id)
         await utils.execute_sql("INSERT INTO stat_command_shutdown (action) VALUES ('executed');", False)
-
-        voice = get(get_bot().voice_clients, guild=ctx.guild)
-        if voice is not None:
-            await voice.disconnect(force=True)
-        utils.log("info", f"Stopped playing on guild '{ctx.guild.id}' in channel '{ctx.author.voice.channel.id}'.")
 
     except Exception as e:
         await send_message(channel=ctx.channel, author=ctx.author,
@@ -351,78 +356,105 @@ async def elevator_shutdown(ctx):
         await utils.execute_sql("INSERT INTO stat_command_shutdown (action) VALUES ('error');", False)
 
 
-async def music():
+def after_music(error, guild_id):
+    if error is not None:
+        utils.on_error("after()", f"Error on guild '{str(guild_id)}', {str(error).strip('.')}.")
+    asyncio.run_coroutine_threadsafe(resume_music(guild_id), get_bot().loop).result()
+
+
+async def resume_music(guild_id, still_playing=True):
+    row = await utils.execute_sql(f"SELECT * FROM set_guilds WHERE guild_id = {guild_id};", True)
+    guild = get_bot().get_guild(row[0][0])
+    channel = get_bot().get_channel(row[0][2])
+
     try:
-        ffmpeg_options = {'before_options': '-stream_loop -1'}
-        # audio_source = discord.FFmpegPCMAudio(secret.audio_name, **FFMPEG_OPTIONS)
-        while True:
-            guilds = await utils.execute_sql("SELECT * FROM set_guilds WHERE playing = 1;", True)
-            # print("Playing: " + str(guilds))
-            for row in guilds:
-                guild = get_bot().get_guild(row[0])
-                channel = get_bot().get_channel(row[2])
-                if guild is not None:
-                    try:
-                        voice = get(get_bot().voice_clients, guild=guild)
-                        if channel is None:
-                            await utils.execute_sql(
-                                f"UPDATE set_guilds SET playing = '0', channel_id = NULL WHERE guild_id = '{row[0]}';",
-                                False)
-                            if voice is not None:
-                                await voice.disconnect(force=True)
-                            break
-                        if channel.permissions_for(guild.me).connect is False:
-                            await utils.execute_sql(
-                                f"UPDATE set_guilds SET playing = '0', channel_id = NULL WHERE guild_id = '{row[0]}';",
-                                False)
-                            if voice is not None:
-                                await voice.disconnect(force=True)
-                            break
-                        if voice is None:
-                            await channel.connect()
-                        voice = get(get_bot().voice_clients, guild=guild)
-                        if guild.me.voice.self_deaf is not True:
-                            await guild.change_voice_state(channel=channel, self_deaf=True)
-                        if not voice.is_playing() and not voice.is_paused():
-                            audio_source = discord.FFmpegPCMAudio(utils.secret.audio_name, **ffmpeg_options)
-                            voice.play(audio_source, after=None)
-                            voice.source.volume = 0.3
-                            if len(voice.channel.voice_states.keys()) <= 1:
-                                voice.pause()
-                    except Exception as e:
-                        utils.on_error("music(), inner", f"Error on guild '{str(guild.id)}', {str(e).strip('.')}.")
-                        last_error = await utils.execute_sql(
-                            f"SELECT error, last_error FROM set_guilds WHERE guild_id = '{guild.id}';", True)
-                        if last_error[0][0] is None:
-                            error_count = 0
-                            error_time = datetime.datetime.min
-                        else:
-                            error_count = last_error[0][0]
-                            error_time = last_error[0][1]
-                        if int(error_count) > 5:
-                            await utils.execute_sql(
-                                f"UPDATE set_guilds SET playing = '0', channel_id = NULL, error = NULL, last_error = NUll WHERE guild_id = '{guild.id}';",
-                                False)
-                            voice = get(get_bot().voice_clients, guild=guild)
-                            if voice is not None:
-                                await voice.disconnect(force=True)
-                            utils.log("info",
-                                      f"Reset playing status of '{str(guild.id)}', after multiple errors.")
-                        else:
-                            if (datetime.datetime.now() - error_time) < datetime.timedelta(seconds=120):
-                                await utils.execute_sql(
-                                    f"UPDATE set_guilds SET error = {int(error_count + 1)}, last_error = '{utils.get_curr_timestamp()}' WHERE guild_id = '{guild.id}';",
-                                    False)
-                            else:
-                                await utils.execute_sql(
-                                    f"UPDATE set_guilds SET error = {0}, last_error = '{utils.get_curr_timestamp()}' WHERE guild_id = '{guild.id}';",
-                                    False)
-                else:
-                    await utils.execute_sql(
-                        f"UPDATE set_guilds SET playing = '0', channel_id = NULL WHERE guild_id = '{row[0]}';", False)
-            await asyncio.sleep(30)
+        if guild is None or channel is None or channel.permissions_for(guild.me).connect is False:
+            await stop_music(guild_id)
+            return
+        else:
+            voice = get(get_bot().voice_clients, guild=guild)
+            if voice is None or voice.channel != channel:
+                await channel.connect()
+                voice = get(get_bot().voice_clients, guild=guild)
+            if guild.me.voice.self_deaf is False:
+                await guild.change_voice_state(channel=channel, self_deaf=True)
+            if voice.is_paused():
+                voice.resume()
+                utils.log("info", f"Resumed playing on guild '{str(guild.id)}' in channel '{str(channel.id)}'.")
+                return
+            elif not voice.is_playing():
+                # ffmpeg_options = {'before_options': '-stream_loop -1'}
+                # audio_source = discord.FFmpegPCMAudio(utils.secret.audio_name, **ffmpeg_options)
+                audio_source = discord.FFmpegPCMAudio(utils.secret.audio_name)
+                voice.play(audio_source, after=lambda error: after_music(error, guild_id))
+                voice.source.volume = 0.3
+                if still_playing is False:
+                    utils.log("info", f"Started playing on guild '{str(guild.id)}' in channel '{str(channel.id)}'.")
+                if len(voice.channel.voice_states.keys()) <= 1 and not voice.is_paused():
+                    await pause_music(guild_id)
+
     except Exception as e:
-        utils.on_error("music(), outer", str(e).strip('.'))
+        utils.on_error("resume_music()", f"Error on guild '{str(guild_id)}', {str(e).strip('.')}.")
+        return Exception
+        # last_error = await utils.execute_sql(
+        #     f"SELECT error, last_error FROM set_guilds WHERE guild_id = '{guild.id}';", True)
+        # if last_error[0][0] is None:
+        #     error_count = 0
+        #     error_time = datetime.datetime.min
+        # else:
+        #     error_count = last_error[0][0]
+        #     error_time = last_error[0][1]
+        # if int(error_count) > 5:
+        #     await utils.execute_sql(
+        #         f"UPDATE set_guilds SET playing = '0', channel_id = NULL, error = NULL, last_error = NUll WHERE guild_id = '{guild.id}';",
+        #         False)
+        #     voice = get(get_bot().voice_clients, guild=guild)
+        #     if voice is not None:
+        #         await voice.disconnect(force=True)
+        #     utils.log("info",
+        #               f"Reset playing status of '{str(guild.id)}', after multiple errors.")
+        # else:
+        #     if (datetime.datetime.now() - error_time) < datetime.timedelta(seconds=120):
+        #         await utils.execute_sql(
+        #             f"UPDATE set_guilds SET error = {int(error_count + 1)}, last_error = '{utils.get_curr_timestamp()}' WHERE guild_id = '{guild.id}';",
+        #             False)
+        #     else:
+        #         await utils.execute_sql(
+        #             f"UPDATE set_guilds SET error = {0}, last_error = '{utils.get_curr_timestamp()}' WHERE guild_id = '{guild.id}';",
+        #             False)
+
+
+async def pause_music(guild_id):
+    row = await utils.execute_sql(f"SELECT * FROM set_guilds WHERE guild_id = {guild_id};", True)
+    guild = get_bot().get_guild(row[0][0])
+    channel = get_bot().get_channel(row[0][2])
+
+    try:
+        voice = get(get_bot().voice_clients, guild=guild)
+        if voice is None or not voice.is_playing() or voice.is_paused():
+            return
+        voice.pause()
+        utils.log("info", f"Paused playing on guild '{str(guild.id)}' in channel '{str(channel.id)}'.")
+    except Exception as e:
+        utils.on_error("pause_music()", f"Error on guild '{str(guild_id)}', {str(e).strip('.')}.")
+        return Exception
+
+
+async def stop_music(guild_id):
+    row = await utils.execute_sql(f"SELECT * FROM set_guilds WHERE guild_id = {guild_id};", True)
+    guild = get_bot().get_guild(row[0][0])
+    channel = get_bot().get_channel(row[0][2])
+
+    try:
+        voice = get(get_bot().voice_clients, guild=guild)
+        if voice is not None:
+            if voice.is_playing():
+                voice.stop()
+            await voice.disconnect(force=True)
+            utils.log("info", f"Stopped playing on guild '{str(guild.id)}'.")
+    except Exception as e:
+        utils.on_error("stop_music()", f"Error on guild '{str(guild_id)}', {str(e).strip('.')}.")
+        return Exception
 
 
 async def update_guild_count():
