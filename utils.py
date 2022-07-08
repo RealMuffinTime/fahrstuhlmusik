@@ -1,12 +1,10 @@
 import datetime
 import mariadb
+import os
 import shortuuid
-import secret_dev as secret
 
 start_timestamp = None
 db_connection = None
-
-# TODO scan for secret file, select available
 
 
 def get_start_timestamp():
@@ -90,3 +88,18 @@ async def execute_sql(sql_term, fetch):
     except Exception as e:
         on_error(f"execute_sql(), fetch: {fetch}", f"{sql_term}", str(e).strip('.'))
         return []
+
+for file in os.listdir(os.getcwd()):
+    if file.startswith("secret_") and file.endswith(".py") :
+        if file.startswith("secret_dev"):
+            import secret_dev as secret
+            break
+        elif file.startswith("secret_master"):
+            import secret_master as secret
+            break
+        else:
+            class secret:
+                secret = "secret"
+
+            log("error", "No secret file found exiting.")
+            exit()
