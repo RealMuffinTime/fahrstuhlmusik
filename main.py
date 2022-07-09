@@ -158,7 +158,7 @@ async def on_voice_state_update(member, before, after):
                 return
         else:
             await utils.execute_sql(
-                f"UPDATE set_guilds SET playing = '0', channel_id = Null WHERE guild_id = '{member.guild.id}';",
+                f"UPDATE set_guilds SET playing = '0', channel_id = NULL WHERE guild_id = '{member.guild.id}';",
                 False)
             await stop_music(member.guild.id)
             return
@@ -358,7 +358,7 @@ async def elevator_shutdown(ctx):
 
 def after_music(error, guild_id):
     if error is not None:
-        utils.on_error("after()", f"Error on guild '{str(guild_id)}', {str(error).strip('.')}.")
+        utils.on_error("after_music()", f"Error on guild '{str(guild_id)}', {str(error).strip('.')}.")
     asyncio.run_coroutine_threadsafe(resume_music(guild_id), get_bot().loop).result()
 
 
