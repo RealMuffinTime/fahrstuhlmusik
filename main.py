@@ -458,7 +458,8 @@ async def stop_music(guild_id):
         if voice is not None:
             if voice.is_playing():
                 voice.stop()
-            await voice.disconnect(force=True)
+            await voice.disconnect()
+            voice.cleanup()
             utils.log("info", f"Stopped playing on guild '{str(guild.id)}'.")
     except Exception:
         trace = traceback.format_exc().rstrip("\n").split("\n")
