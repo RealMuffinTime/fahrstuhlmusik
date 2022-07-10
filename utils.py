@@ -2,6 +2,7 @@ import datetime
 import mariadb
 import os
 import shortuuid
+import traceback
 
 start_timestamp = None
 db_connection = None
@@ -39,9 +40,11 @@ def log(status, *messages):
                             "a", encoding="utf8")
             log_file.write(status_prefix % get_curr_timestamp() + message + "\n")
             log_file.close()
-        except Exception as e:
+        except Exception:
             status_prefix = "[%s ERROR] " % get_curr_timestamp()
-            print(f"{status_prefix}There is an error in an error reporter, HAHA, how ironic, {str(e).strip('.')}")
+            print(f"{status_prefix}There is an error in an error reporter, HAHA, how ironic.")
+            for trace in traceback.format_exc().rstrip("\n").split("\n"):
+                print(f"{status_prefix}{trace}")
 
 
 def get_db_connection():
@@ -54,8 +57,9 @@ def get_db_connection():
                 host=secret.database_host,
                 port=secret.database_port
             )
-        except Exception as e:
-            on_error("get_db_connection()", str(e).strip('.'))
+        except Exception:
+            trace = traceback.format_exc().rstrip("\n").split("\n")
+            on_error("get_db_connection()", *trace)
     return db_connection
 
 
@@ -85,8 +89,9 @@ async def execute_sql(sql_term, fetch):
             return cursor.fetchall()
         if cursor.rowcount == 0 and fetch is True:
             return []
-    except Exception as e:
-        on_error(f"execute_sql(), fetch: {fetch}", f"{sql_term}", str(e).strip('.'))
+    except Exception:
+        trace = traceback.format_exc().rstrip("\n").split("\n")
+        on_error(f"execute_sql(), fetch: {fetch}", f"{sql_term}", *trace)
         return []
 
 for file in os.listdir(os.getcwd()):
