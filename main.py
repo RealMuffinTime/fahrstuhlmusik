@@ -380,9 +380,11 @@ async def resume_music(guild_id, still_playing=True):
             return
         else:
             voice = get(get_bot().voice_clients, guild=guild)
-            if voice is None or voice.channel != channel:
+            if voice is None:
                 await channel.connect()
                 voice = get(get_bot().voice_clients, guild=guild)
+            if voice.channel != channel:
+                await voice.move_to(channel)
             if guild.me.voice.self_deaf is False:
                 await guild.change_voice_state(channel=channel, self_deaf=True)
             if voice.is_paused():
