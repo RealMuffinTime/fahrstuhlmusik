@@ -370,7 +370,7 @@ async def resume_music(guild_id, still_playing=True):
     try:
         if guild is None or channel is None or channel.permissions_for(guild.me).connect is False:
             await utils.execute_sql(
-                f"UPDATE set_guilds SET playing = '0', channel_id = NULL WHERE guild_id = '{guild.id}';", False)
+                f"UPDATE set_guilds SET playing = '0', channel_id = NULL WHERE guild_id = '{guild_id}';", False)
             await stop_music(guild_id)
             return
         else:
