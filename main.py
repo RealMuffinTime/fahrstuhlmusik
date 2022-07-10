@@ -2,6 +2,7 @@ import asyncio
 import aiohttp
 import datetime
 import textwrap
+import traceback
 import discord
 import utils
 from discord.ext import commands
@@ -222,12 +223,13 @@ async def elevator_info(ctx):
                   "by **MuffinTime4484**\n\n"
         await send_message(channel=ctx.channel, author=ctx.author, message=message)
         await utils.execute_sql("INSERT INTO stat_command_info (action) VALUES ('executed');", False)
-    except Exception as e:
+    except Exception:
+        trace = traceback.format_exc().rstrip("\n").split("\n")
         await send_message(channel=ctx.channel, author=ctx.author,
                            message="There has been a error.\n"
                                    "For further information contact the support.\n"
                                    "https://discord.gg/Da9haye\n"
-                                   f"Your error code is **{utils.on_error('elevator_info()', str(e).strip('.'))}**.",
+                                   f"Your error code is **{utils.on_error('elevator_info()', *trace)}**.",
                            delete=30)
         await utils.execute_sql("INSERT INTO stat_command_info (action) VALUES ('error');", False)
 
@@ -258,12 +260,13 @@ async def elevator_review(ctx):
 
         await send_message(channel=ctx.channel, author=ctx.author, embed=embed)
         await utils.execute_sql("INSERT INTO stat_command_review (action) VALUES ('executed');", False)
-    except Exception as e:
+    except Exception:
+        trace = traceback.format_exc().rstrip("\n").split("\n")
         await send_message(channel=ctx.channel, author=ctx.author,
                            message="There has been a error.\n"
                                    "For further information contact the support.\n"
                                    "https://discord.gg/Da9haye\n"
-                                   f"Your error code is **{utils.on_error('elevator_review()', str(e).strip('.'))}**.",
+                                   f"Your error code is **{utils.on_error('elevator_review()', *trace)}**.",
                            delete=30)
         await utils.execute_sql("INSERT INTO stat_command_review (action) VALUES ('error');", False)
 
@@ -302,12 +305,13 @@ async def elevator_music(ctx):
         await resume_music(ctx.guild.id, still_playing=False)
         await utils.execute_sql("INSERT INTO stat_command_music (action) VALUES ('executed');", False)
 
-    except Exception as e:
+    except Exception:
+        trace = traceback.format_exc().rstrip("\n").split("\n")
         await send_message(channel=ctx.channel, author=ctx.author,
                            message="There has been a error.\n"
                                    "For further information contact the support.\n"
                                    "https://discord.gg/Da9haye\n"
-                                   f"Your error code is **{utils.on_error('elevator_music()', str(e).strip('.'))}**.",
+                                   f"Your error code is **{utils.on_error('elevator_music()', *trace)}**.",
                            delete=30)
         await utils.execute_sql("INSERT INTO stat_command_music (action) VALUES ('error');", False)
 
@@ -346,12 +350,13 @@ async def elevator_shutdown(ctx):
         await stop_music(ctx.guild.id)
         await utils.execute_sql("INSERT INTO stat_command_shutdown (action) VALUES ('executed');", False)
 
-    except Exception as e:
+    except Exception:
+        trace = traceback.format_exc().rstrip("\n").split("\n")
         await send_message(channel=ctx.channel, author=ctx.author,
                            message="There has been a error.\n"
                                    "For further information contact the support.\n"
                                    "https://discord.gg/Da9haye\n"
-                                   f"Your error code is **{utils.on_error('elevator_shutdown()', str(e).strip('.'))}**.",
+                                   f"Your error code is **{utils.on_error('elevator_shutdown()', *trace)}**.",
                            delete=30)
         await utils.execute_sql("INSERT INTO stat_command_shutdown (action) VALUES ('error');", False)
 
@@ -395,9 +400,9 @@ async def resume_music(guild_id, still_playing=True):
                 if len(voice.channel.voice_states.keys()) <= 1 and not voice.is_paused():
                     await pause_music(guild_id)
 
-    except Exception as e:
-        utils.on_error("resume_music()", f"Error on guild '{str(guild_id)}', {str(e).strip('.')}.")
-        return Exception
+    except Exception:
+        trace = traceback.format_exc().rstrip("\n").split("\n")
+        return utils.on_error("resume_music()", *trace, f"Error on guild '{str(guild_id)}'.")
         # last_error = await utils.execute_sql(
         #     f"SELECT error, last_error FROM set_guilds WHERE guild_id = '{guild.id}';", True)
         # if last_error[0][0] is None:
@@ -437,8 +442,9 @@ async def pause_music(guild_id):
             return
         voice.pause()
         utils.log("info", f"Paused playing on guild '{str(guild.id)}' in channel '{str(channel.id)}'.")
-    except Exception as e:
-        utils.on_error("pause_music()", f"Error on guild '{str(guild_id)}', {str(e).strip('.')}.")
+    except Exception:
+        trace = traceback.format_exc().rstrip("\n").split("\n")
+        utils.on_error("pause_music()", *trace, f"Error on guild '{str(guild_id)}'.")
         return Exception
 
 
@@ -454,8 +460,9 @@ async def stop_music(guild_id):
                 voice.stop()
             await voice.disconnect(force=True)
             utils.log("info", f"Stopped playing on guild '{str(guild.id)}'.")
-    except Exception as e:
-        utils.on_error("stop_music()", f"Error on guild '{str(guild_id)}', {str(e).strip('.')}.")
+    except Exception:
+        trace = traceback.format_exc().rstrip("\n").split("\n")
+        utils.on_error("stop_music()", *trace, f"Error on guild '{str(guild_id)}'.")
         return Exception
 
 
@@ -491,9 +498,10 @@ async def update_guild_count():
                     else:
                         site[7] = textwrap.shorten(str(response.status), width=50)
 
-            except Exception as e:
+            except Exception:
                 site[7] = "Error"
-                utils.on_error("update_guild_count()", str(e).strip('.'))
+                trace = traceback.format_exc().rstrip("\n").split("\n")
+                utils.on_error("update_guild_count()", *trace)
 
         async with aiohttp.ClientSession() as session1:
             await asyncio.gather(*[asyncio.ensure_future(request(site, session1)) for site in sites])
@@ -519,17 +527,20 @@ async def send_message(channel, author=None, message=None, embed=None, delete=No
                             content="Can't sent to text channel '" + str(
                                 channel) + "', so I am telling you here...\n" + message,
                             delete_after=delete)
-                    except Exception as e:
-                        utils.on_error("send_message(), send", f"Error to user '{str(author)}', {str(e).strip('.')}.")
+                    except Exception:
+                        trace = traceback.format_exc().rstrip("\n").split("\n")
+                        utils.on_error("send_message(), send", *trace, f"Error to user '{str(author)}'.")
                 return
         await channel.trigger_typing()
         await asyncio.sleep(1)
         await channel.send(content=message, embed=embed, delete_after=delete)
-    except Exception as e:
-        utils.on_error("send_message(), outer", str(e).strip('.'))
+    except Exception:
+        trace = traceback.format_exc().rstrip("\n").split("\n")
+        utils.on_error("send_message(), outer", *trace)
 
 
 try:
     get_bot().run(utils.secret.bot_token, bot=True, reconnect=False)
 except Exception as e:
-    utils.on_error("run()", str(e).strip('.'))
+    trace = traceback.format_exc().rstrip("\n").split("\n")
+    utils.on_error("run()", *trace)
