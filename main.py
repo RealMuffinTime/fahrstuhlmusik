@@ -124,6 +124,14 @@ async def on_message_check(ctx):
             else:
                 ctx.author = await ctx.guild.fetch_member(int(ctx.content[3:21]))
 
+        # Remove in discord.py==2.0
+        if str(ctx.channel.type) == "voice":
+            author_channel = await ctx.author.create_dm()
+            await send_message(channel=author_channel, author=ctx.author,
+                               message="Currently the bot does not support text in voice channels.",
+                               delete=30)
+            return
+
         if '<@!' + str(get_bot().user.id) + '>' in ctx.content or '<@!' + str(get_bot().user.id) + '>' in ctx.content:
             await elevator_info(ctx)
             return
