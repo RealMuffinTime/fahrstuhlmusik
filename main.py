@@ -529,7 +529,7 @@ async def update_guild_count():
 
 async def send_message(channel, author=None, message=None, embed=None, delete=None):
     try:
-        if not str(channel.type) == "private":
+        if str(channel.type) != "private":
             if channel.permissions_for(channel.guild.me).send_messages is False:
                 if author is not None:
                     try:
@@ -537,6 +537,8 @@ async def send_message(channel, author=None, message=None, embed=None, delete=No
                             content="Can't sent to text channel '" + str(
                                 channel) + "', so I am telling you here...\n" + message,
                             delete_after=delete)
+                    except discord.Forbidden:
+                        pass
                     except Exception:
                         trace = traceback.format_exc().rstrip("\n").split("\n")
                         utils.on_error("send_message(), send", *trace, f"Error to user '{str(author)}'.")
@@ -544,6 +546,8 @@ async def send_message(channel, author=None, message=None, embed=None, delete=No
         await channel.trigger_typing()
         await asyncio.sleep(1)
         await channel.send(content=message, embed=embed, delete_after=delete)
+    except discord.Forbidden:
+        pass
     except Exception:
         trace = traceback.format_exc().rstrip("\n").split("\n")
         utils.on_error("send_message(), outer", *trace)
