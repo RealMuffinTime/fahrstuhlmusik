@@ -1,6 +1,6 @@
 import asyncio
 import aiohttp
-import datetime
+import assets
 import textwrap
 import traceback
 import discord
@@ -212,19 +212,7 @@ async def on_slash_command_check(ctx):
 
 async def elevator_info(ctx):
     try:
-        message = "A bot that plays **elevator music** for hours and hours.\n" \
-                  "For a support channel or even if you just like to listen to elevator music.\n" \
-                  "```python\n" \
-                  "elevatorinfo         'Shows this info.'\n" \
-                  "elevatormusic        'Starts playing elevator music in your channel.'\n" \
-                  "fahrstuhlmusik       'Also starts playing elevator music in your channel. :)'\n" \
-                  "elevatorreview       'You can rate and review the bot on different sites.'\n" \
-                  "elevatorshutdown     'The bot leaves the current channel.'```" \
-                  "Hope you have fun... with this bot.\n" \
-                  f"Currently serving on **{str(len(get_bot().guilds))}** guilds.\n" \
-                  "Support & Bugs: <https://discord.gg/Da9haye/>\n" \
-                  f"Current version: {get_version()}\n\n" \
-                  "by **MuffinTime4484**\n\n"
+        message = assets.info_message % (str(len(get_bot().guilds)), get_version())
         await send_message(channel=ctx.channel, author=ctx.author, message=message)
         await utils.execute_sql("INSERT INTO stat_command_info (action) VALUES ('executed');", False)
     except Exception:
@@ -255,10 +243,10 @@ async def elevator_review(ctx):
         embed.set_thumbnail(
             url="https://cdn.discordapp.com/attachments/707514263077388320/730372388130258964/fahrstuhlmusik_logo.png")
 
-        sites = utils.secret.lists
-        for site in sites:
-            if sites.index(site) != sites.index(sites[2]):
-                embed.add_field(name=site[0], value=site[1], inline=True)
+        for site in assets.list_names:
+            if site != "Abstract List":
+                review = assets.list_reviews[assets.list_names.index(site)]
+                embed.add_field(name=site, value=review, inline=True)
                 embed.add_field(name="\u200b", value="\u200b", inline=True)
                 embed.add_field(name="\u200b", value="\u200b", inline=True)
 
@@ -487,25 +475,32 @@ async def update_guild_count():
             await utils.execute_sql("INSERT INTO stat_bot_guilds (action) VALUES ('add');", False)
 
     if utils.secret.secret == "master":
-        sites = utils.secret.lists
+        sites = [
+            assets.list_names_short,
+            assets.list_update_url,
+            utils.secret.list_tokens,
+            assets.list_update_json,
+            assets.list_update_code,
+            assets.list_update_temp
+        ]
 
         async def request(site, session):
             try:
-                async with session.post(url=site[3] % str(get_bot().user.id),
-                                        headers={'Authorization': site[4], 'Content-Type': 'application/json'},
-                                        json={site[5]: len(get_bot().guilds)}) as response:
+                async with session.post(url=site[1] % str(get_bot().user.id),
+                                        headers={'Authorization': site[2], 'Content-Type': 'application/json'},
+                                        json={site[3]: len(get_bot().guilds)}) as response:
                     if response is None:
-                        site[7] = "Error"
-                    elif response.status == site[6]:
+                        site[5] = "Error"
+                    elif response.status == site[4]:
                         if str(await response.text()).startswith('{"error":true,'):
-                            site[7] = textwrap.shorten(str(await response.text()), width=50)
+                            site[5] = textwrap.shorten(str(await response.text()), width=50)
                         else:
-                            site[7] = "Ok"
+                            site[5] = "Ok"
                     else:
-                        site[7] = textwrap.shorten(str(response.status), width=50)
+                        site[5] = textwrap.shorten(str(response.status), width=50)
 
             except Exception:
-                site[7] = "Error"
+                site[5] = "Error"
                 trace = traceback.format_exc().rstrip("\n").split("\n")
                 utils.on_error("update_guild_count()", *trace)
 
@@ -514,7 +509,7 @@ async def update_guild_count():
 
         status = ""
         for site in sites:
-            status += site[2] + ": " + site[7]
+            status += site[0] + ": " + site[5]
             if sites.index(site) != sites.index(sites[-1]):
                 status += ", "
             else:
