@@ -166,10 +166,6 @@ async def on_voice_state_update(member, before, after):
                 await resume_music(member.guild.id)
                 return
         else:
-            await utils.execute_sql(
-                f"UPDATE set_guilds SET playing = '0', channel_id = NULL WHERE guild_id = '{member.guild.id}';",
-                False)
-            await stop_music(member.guild.id)
             return
         if after.channel.id != before.channel.id:
             await utils.execute_sql(
