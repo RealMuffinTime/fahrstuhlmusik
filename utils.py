@@ -57,6 +57,7 @@ def get_db_connection():
                 host=secret.database_host,
                 port=secret.database_port
             )
+            db_connection.auto_reconnect = True
         except Exception:
             trace = traceback.format_exc().rstrip("\n").split("\n")
             on_error("get_db_connection()", *trace)
