@@ -38,4 +38,4 @@ info_message = "A bot that plays **elevator music** for hours and hours.\n" \
                "Currently serving on **%s** guilds.\n" \
                "Support & Bugs: <https://discord.gg/Da9haye/>\n" \
                "Current version: %s\n\n" \
-               "by **MuffinTime4484**\n\n"
+               "by **MuffinTime#4484**\n\n"
