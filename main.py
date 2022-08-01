@@ -117,68 +117,76 @@ async def on_message_edit(before, after):
 
 
 async def on_message_check(ctx):
-    if not ctx.author.bot or ctx.author == get_bot().user and ctx.content.startswith("<@!"):
-        if ctx.author == get_bot().user and ctx.content.startswith("<@!"):
-            if str(ctx.channel.type) == "private":
-                ctx.author = await get_bot().fetch_user(int(ctx.content[3:21]))
-            else:
-                ctx.author = await ctx.guild.fetch_member(int(ctx.content[3:21]))
+    try:
+        if not ctx.author.bot or ctx.author == get_bot().user and ctx.content.startswith("<@!"):
+            if ctx.author == get_bot().user and ctx.content.startswith("<@!"):
+                if str(ctx.channel.type) == "private":
+                    ctx.author = await get_bot().fetch_user(int(ctx.content[3:21]))
+                else:
+                    ctx.author = await ctx.guild.fetch_member(int(ctx.content[3:21]))
 
-        # Remove in discord.py==2.0
-        if str(ctx.channel.type) == "voice":
-            author_channel = await ctx.author.create_dm()
-            await send_message(channel=author_channel, author=ctx.author,
-                               message="Currently the bot does not support text in voice channels.",
-                               delete=30)
-            return
+            # Remove in discord.py==2.0
+            if str(ctx.channel.type) == "voice":
+                author_channel = await ctx.author.create_dm()
+                await send_message(channel=author_channel, author=ctx.author,
+                                   message="Currently the bot does not support text in voice channels.",
+                                   delete=30)
+                return
 
-        if '<@!' + str(get_bot().user.id) + '>' in ctx.content or '<@!' + str(get_bot().user.id) + '>' in ctx.content:
-            await elevator_info(ctx)
-            return
+            if '<@!' + str(get_bot().user.id) + '>' in ctx.content or '<@!' + str(get_bot().user.id) + '>' in ctx.content:
+                await elevator_info(ctx)
+                return
 
-        if 'elevatorinfo' in ctx.content.lower():
-            await elevator_info(ctx)
-            return
+            if 'elevatorinfo' in ctx.content.lower():
+                await elevator_info(ctx)
+                return
 
-        if 'elevatorreview' in ctx.content.lower():
-            await elevator_review(ctx)
-            return
+            if 'elevatorreview' in ctx.content.lower():
+                await elevator_review(ctx)
+                return
 
-        if 'elevatormusic' in ctx.content.lower() or 'fahrstuhlmusik' in ctx.content.lower():
-            await elevator_music(ctx)
-            return
+            if 'elevatormusic' in ctx.content.lower() or 'fahrstuhlmusik' in ctx.content.lower():
+                await elevator_music(ctx)
+                return
 
-        if 'elevatorshutdown' in ctx.content.lower():
-            await elevator_shutdown(ctx)
-            return
+            if 'elevatorshutdown' in ctx.content.lower():
+                await elevator_shutdown(ctx)
+                return
+    except Exception:
+        trace = traceback.format_exc().rstrip("\n").split("\n")
+        utils.on_error("on_message_check()", *trace)
 
 
 @get_bot().event
 async def on_voice_state_update(member, before, after):
-    if member.id == get_bot().user.id:
-        if before.channel is None:
-            return
-        if after.channel is not None:
-            if after.channel.permissions_for(member).connect is False:
+    try:
+        if member.id == get_bot().user.id:
+            if before.channel is None:
+                return
+            if after.channel is not None:
+                if after.channel.permissions_for(member).connect is False:
+                    await utils.execute_sql(
+                        f"UPDATE set_guilds SET playing = '1', channel_id = '{before.channel.id}' WHERE guild_id = '{member.guild.id}';",
+                        False)
+                    await resume_music(member.guild.id)
+                    return
+            else:
+                return
+            if after.channel.id != before.channel.id:
                 await utils.execute_sql(
-                    f"UPDATE set_guilds SET playing = '1', channel_id = '{before.channel.id}' WHERE guild_id = '{member.guild.id}';",
+                    f"UPDATE set_guilds SET playing = '1', channel_id = '{after.channel.id}' WHERE guild_id = '{member.guild.id}';",
                     False)
                 await resume_music(member.guild.id)
-                return
-        else:
-            return
-        if after.channel.id != before.channel.id:
-            await utils.execute_sql(
-                f"UPDATE set_guilds SET playing = '1', channel_id = '{after.channel.id}' WHERE guild_id = '{member.guild.id}';",
-                False)
-            await resume_music(member.guild.id)
 
-    voice = get(get_bot().voice_clients, guild=member.guild)
-    if voice is not None:
-        if voice.is_paused() and (len(voice.channel.voice_states.keys()) > 1):
-            await resume_music(member.guild.id)
-        if voice.is_playing() and (len(voice.channel.voice_states.keys()) <= 1):
-            await pause_music(member.guild.id)
+        voice = get(get_bot().voice_clients, guild=member.guild)
+        if voice is not None:
+            if voice.is_paused() and (len(voice.channel.voice_states.keys()) > 1):
+                await resume_music(member.guild.id)
+            if voice.is_playing() and (len(voice.channel.voice_states.keys()) <= 1):
+                await pause_music(member.guild.id)
+    except Exception:
+        trace = traceback.format_exc().rstrip("\n").split("\n")
+        utils.on_error("on_voice_state_update()", *trace)
 
 
 @get_slash().slash(name="elevatorinfo")
@@ -502,7 +510,7 @@ async def update_guild_count():
             except Exception:
                 site[5] = "Error"
                 trace = traceback.format_exc().rstrip("\n").split("\n")
-                utils.on_error("update_guild_count()", *trace)
+                utils.on_error("request()", *trace)
 
         async with aiohttp.ClientSession() as session1:
             await asyncio.gather(*[asyncio.ensure_future(request(site, session1)) for site in sites])
