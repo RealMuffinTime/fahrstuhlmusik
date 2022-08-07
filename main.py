@@ -129,7 +129,7 @@ async def on_message_check(ctx):
             if str(ctx.channel.type) == "voice":
                 author_channel = await ctx.author.create_dm()
                 await send_message(channel=author_channel, author=ctx.author,
-                                   message="Currently the bot does not support text in voice channels.",
+                                   message="Currently the bot does not support commands in voice channels.",
                                    delete=30)
                 return
 
