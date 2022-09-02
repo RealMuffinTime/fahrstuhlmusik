@@ -9,9 +9,11 @@ from discord.ext import commands
 from discord.utils import get
 from discord_slash import SlashCommand
 
+# TODO get caught disconnected by hand error
 # TODO tests for performance improvements ???
-# TODO find a fix for task was destroyed but was pending
-# TODO find a fix for cannot write to closing transport
+# TODO rate-limited???
+# TODO find a fix for task was destroyed but was pending (maybe done)
+# TODO find a fix for cannot write to closing transport (maybe done)
 #
 # TODO licensed track
 # TODO website and statistics
@@ -28,7 +30,7 @@ from discord_slash import SlashCommand
 # Version 1.2.4 -> 2.0.0
 #
 # New stuff
-#  -
+#  - Bot does stay in VC when disconnected by hand
 # Breaking Changes
 #  - Complete rework of the way the bot plays music
 # Changes
@@ -171,7 +173,16 @@ async def on_voice_state_update(member, before, after):
                     await resume_music(member.guild.id)
                     return
             else:
-                return
+                if before.channel.permissions_for(member).connect is False:
+                    await utils.execute_sql(
+                        f"UPDATE set_guilds SET playing = '0', channel_id = NULL WHERE guild_id = '{member.guild.id}';",
+                        False)
+                    await stop_music(member.guild.id)
+                    return
+                else:
+                    utils.log("error", "Uncaught disconnected by hand error:")
+                    await resume_music(member.guild.id)
+                    return
             if after.channel.id != before.channel.id:
                 await utils.execute_sql(
                     f"UPDATE set_guilds SET playing = '1', channel_id = '{after.channel.id}' WHERE guild_id = '{member.guild.id}';",
@@ -384,7 +395,7 @@ async def resume_music(guild_id, still_playing=True):
                 voice = await channel.connect()
             if voice.channel != channel:
                 await voice.move_to(channel)
-            if guild.me.voice.self_deaf is False:
+            if guild.me.voice is not None and guild.me.voice.self_deaf is False:
                 await guild.change_voice_state(channel=channel, self_deaf=True)
             if voice.is_paused():
                 voice.resume()
