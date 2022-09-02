@@ -494,7 +494,8 @@ async def update_guild_count():
             await utils.execute_sql("INSERT INTO stat_bot_guilds (action) VALUES ('add');", False)
 
     if utils.secret.secret == "master":
-        sites = [
+        sites = [[], [], [], [], [], []]
+        sites_assets = [
             assets.list_names_short,
             assets.list_update_url,
             utils.secret.list_tokens,
@@ -502,6 +503,10 @@ async def update_guild_count():
             assets.list_update_code,
             assets.list_update_temp
         ]
+
+        for asset in sites_assets:
+            for tag in enumerate(asset):
+                sites[tag[0]].append(tag[1])
 
         async def request(site, session):
             try:
