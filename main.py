@@ -37,31 +37,14 @@ from discord_slash import SlashCommand
 #  - Rework of guild count update
 #  - Background improvements
 
-
-bot = None
-db_connection = None
+version = "1.2.4"
 slash = None
-start_timestamp = None
-version = None
 
-
-def get_bot():
-    global bot
-    if bot is None:
-        bot = commands.Bot(
-            command_prefix=None,
-            description='Plays hours and hours elevator music.',
-            owner_id=412235309204635649,
-            case_insensitive=True
-        )
-    return bot
-
-
-def get_version():
-    global version
-    if version is None:
-        version = "1.2.4"
-    return version
+bot = discord.Client(
+    description='Plays hours and hours elevator music.',
+    intents=discord.Intents.default(),
+    owner_id=412235309204635649
+)
 
 
 def get_slash():
@@ -71,13 +54,14 @@ def get_slash():
     return slash
 
 
-@get_bot().event
+
+@bot.event
 async def on_ready():
     utils.get_start_timestamp()
-    utils.log("info", f"Logged in as {str(get_bot().user)}.")
-    await get_bot().change_presence(activity=discord.Activity(name="elevatorinfo", type=discord.ActivityType.listening))
+    utils.log("info", f"Logged in as {str(bot.user)}.")
+    await bot.change_presence(activity=discord.Activity(name="/elevatorinfo", type=discord.ActivityType.listening))
 
-    for guild in get_bot().guilds:
+    for guild in bot.guilds:
         await utils.execute_sql(f"INSERT IGNORE INTO set_guilds VALUES ('{guild.id}', '0', NULL, NULL, NULL)", False)
     await update_guild_count()
 
@@ -86,7 +70,7 @@ async def on_ready():
         await resume_music(row[0], still_playing=False)
 
 
-@get_bot().event
+@bot.event
 async def on_guild_join(guild):
     await utils.execute_sql(
         f"INSERT INTO set_guilds VALUES ('{guild.id}', '0', NULL, NULL, NULL) ON DUPLICATE KEY UPDATE playing = '0', channel_id = NULL",
@@ -96,7 +80,7 @@ async def on_guild_join(guild):
     await update_guild_count()
 
 
-@get_bot().event
+@bot.event
 async def on_guild_remove(guild):
     for guild_id in utils.secret.error_guilds:
         if guild.id == guild_id:
@@ -108,22 +92,22 @@ async def on_guild_remove(guild):
     await update_guild_count()
 
 
-@get_bot().event
+@bot.event
 async def on_message(message):
     await on_message_check(message)
 
 
-@get_bot().event
+@bot.event
 async def on_message_edit(before, after):
     await on_message_check(after)
 
 
 async def on_message_check(ctx):
     try:
-        if not ctx.author.bot or ctx.author == get_bot().user and ctx.content.startswith("<@!"):
-            if ctx.author == get_bot().user and ctx.content.startswith("<@!"):
+        if not ctx.author.bot or ctx.author == bot.user and ctx.content.startswith("<@!"):
+            if ctx.author == bot.user and ctx.content.startswith("<@!"):
                 if str(ctx.channel.type) == "private":
-                    ctx.author = await get_bot().fetch_user(int(ctx.content[3:21]))
+                    ctx.author = await bot.fetch_user(int(ctx.content[3:21]))
                 else:
                     ctx.author = await ctx.guild.fetch_member(int(ctx.content[3:21]))
 
@@ -135,7 +119,7 @@ async def on_message_check(ctx):
                                    delete=30)
                 return
 
-            if '<@!' + str(get_bot().user.id) + '>' in ctx.content or '<@!' + str(get_bot().user.id) + '>' in ctx.content:
+            if '<@!' + str(bot.user.id) + '>' in ctx.content or '<@!' + str(bot.user.id) + '>' in ctx.content:
                 await elevator_info(ctx)
                 return
 
@@ -159,10 +143,10 @@ async def on_message_check(ctx):
         utils.on_error("on_message_check()", *trace)
 
 
-@get_bot().event
+@bot.event
 async def on_voice_state_update(member, before, after):
     try:
-        if member.id == get_bot().user.id:
+        if member.id == bot.user.id:
             if before.channel is None:
                 return
             if after.channel is not None:
@@ -189,7 +173,7 @@ async def on_voice_state_update(member, before, after):
                     False)
                 await resume_music(member.guild.id)
 
-        voice = get(get_bot().voice_clients, guild=member.guild)
+        voice = get(bot.voice_clients, guild=member.guild)
         if voice is not None:
             if voice.is_paused() and (len(voice.channel.voice_states.keys()) > 1):
                 await resume_music(member.guild.id)
@@ -231,7 +215,7 @@ async def on_slash_command_check(ctx):
 
 async def elevator_info(ctx):
     try:
-        message = assets.info_message % (str(len(get_bot().guilds)), get_version())
+        message = assets.info_message % (str(len(bot.guilds)), version)
         await send_message(channel=ctx.channel, author=ctx.author, message=message)
         await utils.execute_sql("INSERT INTO stat_command_info (action) VALUES ('executed');", False)
     except Exception:
@@ -258,7 +242,7 @@ async def elevator_review(ctx):
 
         embed = discord.Embed(title="Here you can review this bot and vote for it",
                               description='Below you will find pages where the bot is listed.', colour=color)
-        embed.set_author(name=str(get_bot().user), url="https://bots.muffintime.tk/fahrstuhlmusik/")
+        embed.set_author(name=str(bot.user), url="https://bots.muffintime.tk/fahrstuhlmusik/")
         embed.set_thumbnail(
             url="https://cdn.discordapp.com/attachments/707514263077388320/730372388130258964/fahrstuhlmusik_logo.png")
 
@@ -375,13 +359,13 @@ async def elevator_shutdown(ctx):
 def after_music(error, guild_id):
     if error is not None:
         utils.on_error("after_music()", f"Error on guild '{str(guild_id)}', {str(error).strip('.')}.")
-    asyncio.run_coroutine_threadsafe(resume_music(guild_id), get_bot().loop).result()
+    asyncio.run_coroutine_threadsafe(resume_music(guild_id), bot.loop).result()
 
 
 async def resume_music(guild_id, still_playing=True):
     row = await utils.execute_sql(f"SELECT * FROM set_guilds WHERE guild_id = {guild_id};", True)
-    guild = get_bot().get_guild(row[0][0])
-    channel = get_bot().get_channel(row[0][2])
+    guild = bot.get_guild(row[0][0])
+    channel = bot.get_channel(row[0][2])
 
     try:
         if guild is None or channel is None or channel.permissions_for(guild.me).connect is False:
@@ -390,7 +374,7 @@ async def resume_music(guild_id, still_playing=True):
             await stop_music(guild_id)
             return
         else:
-            voice = get(get_bot().voice_clients, guild=guild)
+            voice = get(bot.voice_clients, guild=guild)
             if voice is None:
                 voice = await channel.connect()
             if voice.channel != channel:
@@ -445,11 +429,11 @@ async def resume_music(guild_id, still_playing=True):
 
 async def pause_music(guild_id):
     row = await utils.execute_sql(f"SELECT * FROM set_guilds WHERE guild_id = {guild_id};", True)
-    guild = get_bot().get_guild(row[0][0])
-    channel = get_bot().get_channel(row[0][2])
+    guild = bot.get_guild(row[0][0])
+    channel = bot.get_channel(row[0][2])
 
     try:
-        voice = get(get_bot().voice_clients, guild=guild)
+        voice = get(bot.voice_clients, guild=guild)
         if voice is None or not voice.is_playing() or voice.is_paused():
             return
         voice.pause()
@@ -462,11 +446,11 @@ async def pause_music(guild_id):
 
 async def stop_music(guild_id):
     row = await utils.execute_sql(f"SELECT * FROM set_guilds WHERE guild_id = {guild_id};", True)
-    guild = get_bot().get_guild(row[0][0])
-    channel = get_bot().get_channel(row[0][2])
+    guild = bot.get_guild(row[0][0])
+    channel = bot.get_channel(row[0][2])
 
     try:
-        voice = get(get_bot().voice_clients, guild=guild)
+        voice = get(bot.voice_clients, guild=guild)
         if voice is not None:
             if voice.is_playing():
                 voice.stop()
@@ -480,7 +464,7 @@ async def stop_music(guild_id):
 
 
 async def update_guild_count():
-    guild_count = len(get_bot().guilds)
+    guild_count = len(bot.guilds)
     guild_count_db = len(
         await utils.execute_sql("SELECT * FROM stat_bot_guilds WHERE action = 'add';", True)) - len(
         await utils.execute_sql("SELECT * FROM stat_bot_guilds WHERE action = 'remove';", True))
@@ -510,9 +494,9 @@ async def update_guild_count():
 
         async def request(site, session):
             try:
-                async with session.post(url=site[1] % str(get_bot().user.id),
+                async with session.post(url=site[1] % str(bot.user.id),
                                         headers={'Authorization': site[2], 'Content-Type': 'application/json'},
-                                        json={site[3]: len(get_bot().guilds)}) as response:
+                                        json={site[3]: len(bot.guilds)}) as response:
                     if response is None:
                         site[5] = "Error"
                     elif response.status == site[4]:
@@ -569,7 +553,7 @@ async def send_message(channel, author=None, message=None, embed=None, delete=No
 
 
 try:
-    get_bot().run(utils.secret.bot_token, bot=True, reconnect=False)
+    bot.run(utils.secret.bot_token, bot=True, reconnect=False)
 except Exception as e:
     trace = traceback.format_exc().rstrip("\n").split("\n")
     utils.on_error("run()", *trace)
