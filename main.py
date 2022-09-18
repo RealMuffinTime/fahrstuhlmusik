@@ -8,22 +8,23 @@ import utils
 from discord import app_commands
 from discord.utils import get
 
-# TODO get caught disconnected by hand error
+# TODO delete in send message
+# TODO rework online status
+
+# TODO use different music files, pick random, these need to be licensed, easter eggs
+# TODO get caught disconnected by hand, error still some issues
 # TODO tests for performance improvements ???
 # TODO rate-limited???
-# TODO find a fix for task was destroyed but was pending (maybe done)
-# TODO find a fix for cannot write to closing transport (maybe done)
+# TODO find a fix for task was destroyed but was pending (still persisting)
 #
-# TODO licensed track
 # TODO website and statistics
 # TODO move command - own channel which moves down and up (this one moves users form one to another channel, plays fitting sounds (door closes/opens, moving, elevator music) at the end it moves to its saved channel)
-# TODO settings command
+# TODO settings command, leaderboard
 #
-# TODO special events at special days
-# TODO open sauce?
+# TODO open sauce
 #
 # TODO donate command
-# TODO (implement shards)
+# TODO implement shards
 
 
 # Version 1.2.4 -> 2.0.0
