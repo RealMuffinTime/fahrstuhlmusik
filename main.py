@@ -24,18 +24,14 @@ from discord.utils import get
 # TODO implement shards
 
 
-# Version 1.2.4 -> 2.0.0
+# Version 2.0.0 ->
 #
 # New stuff
-#  - Bot does stay in VC when disconnected by hand
-# Breaking Changes
-#  - Complete rework of the way the bot plays music
-#  - Move to discord.py v2, the bot supports now only slash commands
+#  -
 # Changes
-#  - Rework of guild count update
-#  - Background improvements
+#  -
 
-version = "1.2.4"
+version = "2.0.0"
 
 bot = discord.Client(
     description='Plays hours and hours elevator music.',
