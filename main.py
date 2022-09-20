@@ -8,9 +8,6 @@ import utils
 from discord import app_commands
 from discord.utils import get
 
-# TODO delete in send message
-# TODO rework online status
-
 # TODO use different music files, pick random, these need to be licensed, easter eggs
 # TODO get caught disconnected by hand, error still some issues
 # TODO tests for performance improvements ???
@@ -413,9 +410,9 @@ async def update_guild_count():
 async def send_message(interaction, message=None, embed=None, delete=None):
     try:
         await interaction.response.send_message(content=message, embed=embed)
-        # if delete is not None:
-        #     await asyncio.sleep(delete)
-        #     await interaction.delete_original_response()
+        if delete is not None:
+            await asyncio.sleep(delete)
+            await interaction.delete_original_response()
     except Exception:
         trace = traceback.format_exc().rstrip("\n").split("\n")
         utils.on_error("send_message()", *trace)
