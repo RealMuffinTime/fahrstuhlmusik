@@ -407,11 +407,15 @@ async def send_message(interaction, message=None, embed=None, delete=None):
     try:
         await interaction.response.send_message(content=message, embed=embed)
         if delete is not None:
-            await asyncio.sleep(delete)
-            await interaction.delete_original_response()
+            asyncio.ensure_future(send_message_delete(interaction, delete))
     except Exception:
         trace = traceback.format_exc().rstrip("\n").split("\n")
         utils.on_error("send_message()", *trace)
+
+
+async def send_message_delete(interaction, delete):
+    await asyncio.sleep(delete)
+    await interaction.delete_original_response()
 
 
 asyncio.run(main())
