@@ -27,15 +27,12 @@ list_update_code = [200, 204, 200, 200, 200, 200]
 list_update_temp = ["", "", "", "", "", ""]
 
 info_message = "A bot that plays **elevator music** for hours and hours.\n" \
-               "For a support channel or even if you just like to listen to elevator music.\n" \
-               "```python\n" \
-               "elevatorinfo         'Shows this info.'\n" \
-               "elevatormusic        'Starts playing elevator music in your channel.'\n" \
-               "fahrstuhlmusik       'Also starts playing elevator music in your channel. :)'\n" \
-               "elevatorreview       'You can rate and review the bot on different sites.'\n" \
-               "elevatorshutdown     'The bot leaves the current channel.'```" \
-               "Hope you have fun... with this bot.\n" \
-               "Currently serving on **%s** guilds.\n" \
-               "Support & Bugs: <https://discord.gg/Da9haye/>\n" \
-               "Current version: %s\n\n" \
-               "by **MuffinTime#4484**\n\n"
+               "For a support channel or even if you just like to listen to elevator music.\n\n" \
+               "%s     `Shows this info.`\n" \
+               "%s     `Starts playing elevator music in your channel.`\n" \
+               "%s     `Also starts playing elevator music in your channel. :)`\n" \
+               "%s     `You can rate and review the bot on different sites.`\n" \
+               "%s     `The bot leaves the current channel.`\n\n" \
+               "Hope you have fun... with this bot. Support & Bugs: <https://discord.gg/Da9haye/>\n" \
+               "Currently serving on **%s** guilds. Current version: **%s**.\n\n" \
+               "by **MuffinTime#4484**"

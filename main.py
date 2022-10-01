@@ -30,7 +30,7 @@ from discord.utils import get
 # New stuff
 #  -
 # Changes
-#  -
+#  - Improved `/elevatorinfo` command
 
 version = "2.0.0"
 
@@ -129,7 +129,9 @@ async def on_voice_state_update(member, before, after):
 @bot.tree.command(name="elevatorinfo", description="Shows infos and help regarding the bot fahrstuhlmusik.")
 async def elevator_info(interaction: discord.Interaction):
     try:
-        message = assets.info_message % (str(len(bot.guilds)), version)
+        commands = await bot.tree.fetch_commands()
+        message = assets.info_message % (commands[0].mention, commands[1].mention, commands[2].mention,
+                                         commands[3].mention, commands[4].mention, str(len(bot.guilds)), version)
         await send_message(interaction, message=message)
         await utils.execute_sql("INSERT INTO stat_command_info (action) VALUES ('executed');", False)
     except Exception:
