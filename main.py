@@ -8,11 +8,12 @@ import utils
 from discord import app_commands
 from discord.utils import get
 
-# TODO use different music files, pick random, these need to be licensed, easter eggs
-# TODO get caught disconnected by hand, error still some issues
+# TODO get caught disconnected by hand, error still some issues (dont know what to do)
 # TODO tests for performance improvements ???
-# TODO rate-limited???
+# TODO find a fix for rate-limited (done???)
 # TODO find a fix for task was destroyed but was pending (still persisting)
+#
+# TODO use different music files, pick random, these need to be licensed, easter eggs
 #
 # TODO website and statistics
 # TODO move command - own channel which moves down and up (this one moves users form one to another channel, plays fitting sounds (door closes/opens, moving, elevator music) at the end it moves to its saved channel)
