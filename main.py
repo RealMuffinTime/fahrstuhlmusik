@@ -10,8 +10,7 @@ from discord.utils import get
 
 # TODO get caught disconnected by hand, error still some issues (dont know what to do)
 # TODO tests for performance improvements ???
-# TODO find a fix for rate-limited (done???)
-# TODO find a fix for task was destroyed but was pending (still persisting)
+# TODO find a fix for: task was destroyed but it is pending
 #
 # TODO use different music files, pick random, these need to be licensed, easter eggs
 #
@@ -31,6 +30,7 @@ from discord.utils import get
 #  -
 # Changes
 #  - Improved `/elevatorinfo` command
+#  - Add missing exception catchers
 
 version = "2.0.0"
 
@@ -344,66 +344,70 @@ async def stop_music(guild_id):
 
 
 async def update_guild_count():
-    guild_count = len(bot.guilds)
-    guild_count_db = len(
-        await utils.execute_sql("SELECT * FROM stat_bot_guilds WHERE action = 'add';", True)) - len(
-        await utils.execute_sql("SELECT * FROM stat_bot_guilds WHERE action = 'remove';", True))
-    if guild_count < guild_count_db:
-        diff = guild_count_db - guild_count
-        for count in range(diff):
-            await utils.execute_sql("INSERT INTO stat_bot_guilds (action) VALUES ('remove');", False)
-    elif guild_count > guild_count_db:
-        diff = guild_count - guild_count_db
-        for count in range(diff):
-            await utils.execute_sql("INSERT INTO stat_bot_guilds (action) VALUES ('add');", False)
+    try:
+        guild_count = len(bot.guilds)
+        guild_count_db = len(
+            await utils.execute_sql("SELECT * FROM stat_bot_guilds WHERE action = 'add';", True)) - len(
+            await utils.execute_sql("SELECT * FROM stat_bot_guilds WHERE action = 'remove';", True))
+        if guild_count < guild_count_db:
+            diff = guild_count_db - guild_count
+            for count in range(diff):
+                await utils.execute_sql("INSERT INTO stat_bot_guilds (action) VALUES ('remove');", False)
+        elif guild_count > guild_count_db:
+            diff = guild_count - guild_count_db
+            for count in range(diff):
+                await utils.execute_sql("INSERT INTO stat_bot_guilds (action) VALUES ('add');", False)
 
-    if utils.secret.secret == "master":
-        sites = [[], [], [], [], [], []]
-        sites_assets = [
-            assets.list_names_short,
-            assets.list_update_url,
-            utils.secret.list_tokens,
-            assets.list_update_json,
-            assets.list_update_code,
-            assets.list_update_temp
-        ]
+        if utils.secret.secret == "master":
+            sites = [[], [], [], [], [], []]
+            sites_assets = [
+                assets.list_names_short,
+                assets.list_update_url,
+                utils.secret.list_tokens,
+                assets.list_update_json,
+                assets.list_update_code,
+                assets.list_update_temp
+            ]
 
-        for asset in sites_assets:
-            for tag in enumerate(asset):
-                sites[tag[0]].append(tag[1])
+            for asset in sites_assets:
+                for tag in enumerate(asset):
+                    sites[tag[0]].append(tag[1])
 
-        async def request(site, session):
-            try:
-                async with session.post(url=site[1] % str(bot.user.id),
-                                        headers={'Authorization': site[2], 'Content-Type': 'application/json'},
-                                        json={site[3]: len(bot.guilds)}) as response:
-                    if response is None:
-                        site[5] = "Error"
-                    elif response.status == site[4]:
-                        if str(await response.text()).startswith('{"error":true,'):
-                            site[5] = textwrap.shorten(str(await response.text()), width=50)
+            async def request(site, session):
+                try:
+                    async with session.post(url=site[1] % str(bot.user.id),
+                                            headers={'Authorization': site[2], 'Content-Type': 'application/json'},
+                                            json={site[3]: len(bot.guilds)}) as response:
+                        if response is None:
+                            site[5] = "Error"
+                        elif response.status == site[4]:
+                            if str(await response.text()).startswith('{"error":true,'):
+                                site[5] = textwrap.shorten(str(await response.text()), width=50)
+                            else:
+                                site[5] = "Ok"
                         else:
-                            site[5] = "Ok"
-                    else:
-                        site[5] = textwrap.shorten(str(response.status), width=50)
+                            site[5] = textwrap.shorten(str(response.status), width=50)
 
-            except Exception:
-                site[5] = "Error"
-                trace = traceback.format_exc().rstrip("\n").split("\n")
-                utils.on_error("request()", *trace)
+                except Exception:
+                    site[5] = "Error"
+                    trace = traceback.format_exc().rstrip("\n").split("\n")
+                    utils.on_error("request()", *trace)
 
-        async with aiohttp.ClientSession() as session1:
-            await asyncio.gather(*[asyncio.ensure_future(request(site, session1)) for site in sites])
+            async with aiohttp.ClientSession() as session1:
+                await asyncio.gather(*[asyncio.ensure_future(request(site, session1)) for site in sites], return_exceptions=True)
 
-        status = ""
-        for site in sites:
-            status += site[0] + ": " + site[5]
-            if sites.index(site) != sites.index(sites[-1]):
-                status += ", "
-            else:
-                status += "."
+            status = ""
+            for site in sites:
+                status += site[0] + ": " + site[5]
+                if sites.index(site) != sites.index(sites[-1]):
+                    status += ", "
+                else:
+                    status += "."
 
-        utils.log("info", f"Currently serving {str(guild_count)} guilds.", f"Updated " + status)
+            utils.log("info", f"Currently serving {str(guild_count)} guilds.", f"Updated " + status)
+    except Exception:
+        trace = traceback.format_exc().rstrip("\n").split("\n")
+        utils.on_error("update_guild_count()", *trace)
 
 
 async def send_message(interaction, message=None, embed=None, delete=None):
@@ -417,8 +421,14 @@ async def send_message(interaction, message=None, embed=None, delete=None):
 
 
 async def send_message_delete(interaction, delete):
-    await asyncio.sleep(delete)
-    await interaction.delete_original_response()
+    try:
+        await asyncio.sleep(delete)
+        await interaction.delete_original_response()
+    except discord.NotFound:
+        return
+    except Exception:
+        trace = traceback.format_exc().rstrip("\n").split("\n")
+        utils.on_error("send_message_delete()", *trace)
 
 
 asyncio.run(main())
