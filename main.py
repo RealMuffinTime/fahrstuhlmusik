@@ -72,7 +72,7 @@ async def on_guild_join(guild):
         f"INSERT INTO set_guilds VALUES ('{guild.id}', '0', NULL, NULL, NULL) ON DUPLICATE KEY UPDATE playing = '0', channel_id = NULL",
         False)
     await utils.execute_sql("INSERT INTO stat_bot_guilds (action) VALUES ('add');", False)
-    utils.log("info", f"Guild join '{str(guild.id)}'.")
+    utils.log("info", f"Guild join {str(guild.id)}.")
     await update_guild_count()
 
 
@@ -84,7 +84,7 @@ async def on_guild_remove(guild):
     await utils.execute_sql(f"UPDATE set_guilds SET playing = '0', channel_id = NULL WHERE guild_id = '{guild.id}';",
                             False)
     await utils.execute_sql("INSERT INTO stat_bot_guilds (action) VALUES ('remove');", False)
-    utils.log("info", f"Guild leave '{str(guild.id)}'.")
+    utils.log("info", f"Guild leave {str(guild.id)}.")
     await update_guild_count()
 
 
@@ -136,6 +136,7 @@ async def elevator_info(interaction: discord.Interaction):
         message = assets.info_message % (commands[0].mention, commands[1].mention, commands[2].mention,
                                          commands[3].mention, commands[4].mention, str(len(bot.guilds)), version)
         await send_message(interaction, message=message)
+        utils.log("info", f"Successfully executed elevatorinfo() on {interaction.guild.id}.")
         await utils.execute_sql("INSERT INTO stat_command_info (action) VALUES ('executed');", False)
     except Exception:
         trace = traceback.format_exc().rstrip("\n").split("\n")
@@ -143,6 +144,7 @@ async def elevator_info(interaction: discord.Interaction):
                            "For further information contact the support.\n"
                            "https://discord.gg/Da9haye\n"
                            f"Your error code is **{utils.on_error('elevator_info()', *trace)}**.", delete=30)
+        utils.log("info", f"Thrown an error while executing elevatorinfo() on {interaction.guild.id}.")
         await utils.execute_sql("INSERT INTO stat_command_info (action) VALUES ('error');", False)
 
 
@@ -168,6 +170,7 @@ async def elevator_review(interaction: discord.Interaction):
                 embed.add_field(name="\u200b", value="\u200b", inline=True)
 
         await send_message(interaction, embed=embed)
+        utils.log("info", f"Successfully executed elevatorreview() on {interaction.guild.id}.")
         await utils.execute_sql("INSERT INTO stat_command_review (action) VALUES ('executed');", False)
     except Exception:
         trace = traceback.format_exc().rstrip("\n").split("\n")
@@ -175,6 +178,7 @@ async def elevator_review(interaction: discord.Interaction):
                                                 "For further information contact the support.\n"
                                                 "https://discord.gg/Da9haye\n"
                                                 f"Your error code is **{utils.on_error('elevator_review()', *trace)}**.", delete=30)
+        utils.log("info", f"Thrown an error while executing elevatorreview() on {interaction.guild.id}.")
         await utils.execute_sql("INSERT INTO stat_command_review (action) VALUES ('error');", False)
 
 
@@ -216,6 +220,7 @@ async def elevator_music(interaction: discord.Interaction):
             f"UPDATE set_guilds SET playing = '1', channel_id = '{interaction.user.voice.channel.id}' WHERE guild_id = '{interaction.guild.id}';",
             False)
         await resume_music(interaction.guild.id, still_playing=False)
+        utils.log("info", f"Successfully executed elevatormusic() on {interaction.guild.id}.")
         await utils.execute_sql("INSERT INTO stat_command_music (action) VALUES ('executed');", False)
 
     except Exception:
@@ -224,6 +229,7 @@ async def elevator_music(interaction: discord.Interaction):
                                                 "For further information contact the support.\n"
                                                 "https://discord.gg/Da9haye\n"
                                                 f"Your error code is **{utils.on_error('elevator_music()', *trace)}**.", delete=30)
+        utils.log("info", f"Thrown an error while executing elevatormusic() on {interaction.guild.id}.")
         await utils.execute_sql("INSERT INTO stat_command_music (action) VALUES ('error');", False)
 
 
@@ -254,6 +260,7 @@ async def elevator_shutdown(interaction: discord.Interaction):
         await send_message(interaction, message=":( but ok,\n I am going to stop.", delete=10)
         await utils.execute_sql(f"UPDATE set_guilds SET playing = '0', channel_id = NULL WHERE guild_id = '{interaction.guild.id}';", False)
         await stop_music(interaction.guild.id)
+        utils.log("info", f"Successfully executed elevatorshutdown() on {interaction.guild.id}.")
         await utils.execute_sql("INSERT INTO stat_command_shutdown (action) VALUES ('executed');", False)
 
     except Exception:
@@ -261,13 +268,14 @@ async def elevator_shutdown(interaction: discord.Interaction):
         await send_message(interaction, message="There has been a error.\n"
                                                 "For further information contact the support.\n"
                                                 "https://discord.gg/Da9haye\n"
-                                                f"Your error code is **{utils.on_error('elevator_shutdown()', *trace)}**.",delete=30)
+                                                f"Your error code is **{utils.on_error('elevator_shutdown()', *trace)}**.", delete=30)
+        utils.log("info", f"Thrown an error while executing elevatorshutdown() on {interaction.guild.id}.")
         await utils.execute_sql("INSERT INTO stat_command_shutdown (action) VALUES ('error');", False)
 
 
 def after_music(error, guild_id):
     if error is not None:
-        utils.on_error("after_music()", f"Error on guild '{str(guild_id)}', {str(error).strip('.')}.")
+        utils.on_error("after_music()", f"Error on {str(guild_id)}, {str(error).strip('.')}.")
     asyncio.run_coroutine_threadsafe(resume_music(guild_id), bot.loop).result()
 
 
@@ -292,7 +300,7 @@ async def resume_music(guild_id, still_playing=True):
                 await guild.change_voice_state(channel=channel, self_deaf=True)
             if voice.is_paused():
                 voice.resume()
-                utils.log("info", f"Resumed playing on guild '{str(guild.id)}' in channel '{str(channel.id)}'.")
+                utils.log("info", f"Resumed playing on guild {str(guild.id)} in channel {str(channel.id)}.")
                 return
             elif not voice.is_playing():
                 # ffmpeg_options = {'before_options': '-stream_loop -1'}
@@ -301,13 +309,13 @@ async def resume_music(guild_id, still_playing=True):
                 voice.play(audio_source, after=lambda error: after_music(error, guild_id))
                 voice.source.volume = 0.3
                 if still_playing is False:
-                    utils.log("info", f"Started playing on guild '{str(guild.id)}' in channel '{str(channel.id)}'.")
+                    utils.log("info", f"Started playing on guild {str(guild.id)} in channel {str(channel.id)}.")
                 if len(voice.channel.voice_states.keys()) <= 1 and not voice.is_paused():
                     await pause_music(guild_id)
 
     except Exception:
         trace = traceback.format_exc().rstrip("\n").split("\n")
-        return utils.on_error("resume_music()", *trace, f"Error on guild '{str(guild_id)}'.")
+        return utils.on_error("resume_music()", *trace, f"Error on guild {str(guild_id)}.")
 
 
 async def pause_music(guild_id):
@@ -320,10 +328,10 @@ async def pause_music(guild_id):
         if voice is None or not voice.is_playing() or voice.is_paused():
             return
         voice.pause()
-        utils.log("info", f"Paused playing on guild '{str(guild.id)}' in channel '{str(channel.id)}'.")
+        utils.log("info", f"Paused playing on guild {str(guild.id)} in channel {str(channel.id)}.")
     except Exception:
         trace = traceback.format_exc().rstrip("\n").split("\n")
-        utils.on_error("pause_music()", *trace, f"Error on guild '{str(guild_id)}'.")
+        utils.on_error("pause_music()", *trace, f"Error on guild {str(guild_id)}.")
         return Exception
 
 
@@ -339,10 +347,10 @@ async def stop_music(guild_id):
                 voice.stop()
             await voice.disconnect()
             voice.cleanup()
-            utils.log("info", f"Stopped playing on guild '{str(guild.id)}'.")
+            utils.log("info", f"Stopped playing on guild {str(guild.id)}.")
     except Exception:
         trace = traceback.format_exc().rstrip("\n").split("\n")
-        utils.on_error("stop_music()", *trace, f"Error on guild '{str(guild_id)}'.")
+        utils.on_error("stop_music()", *trace, f"Error on guild {str(guild_id)}.")
         return Exception
 
 
