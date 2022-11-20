@@ -61,6 +61,9 @@ async def on_ready():
     playing_guilds = await utils.execute_sql("SELECT guild_id FROM set_guilds WHERE playing = 1;", True)
     for row in playing_guilds:
         await resume_music(row[0], still_playing=False)
+    while True:
+        await utils.execute_sql("", False)
+        await asyncio.sleep(30)
 
 
 @bot.event

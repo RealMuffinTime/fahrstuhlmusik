@@ -4,6 +4,10 @@ import os
 import shortuuid
 import traceback
 
+
+# TODO rework online status
+
+
 start_timestamp = None
 db_connection = None
 
@@ -84,12 +88,14 @@ async def execute_sql(sql_term, fetch):
         else:
             restart()
 
-        cursor.execute(sql_term)
+        if sql_term != "":
+            cursor.execute(sql_term)
         get_db_connection().commit()
-        if cursor.rowcount > 0 and fetch is True:
-            return cursor.fetchall()
-        if cursor.rowcount == 0 and fetch is True:
-            return []
+        if sql_term != "":
+            if cursor.rowcount > 0 and fetch is True:
+                return cursor.fetchall()
+            if cursor.rowcount == 0 and fetch is True:
+                return []
     except Exception:
         trace = traceback.format_exc().rstrip("\n").split("\n")
         on_error(f"execute_sql(), fetch: {fetch}", f"{sql_term}", *trace)
