@@ -51,7 +51,7 @@ async def main():
 @bot.event
 async def on_ready():
     utils.get_start_timestamp()
-    utils.log("info", f"Logged in as {str(bot.user)}.")
+    utils.log("info", f"Logged in as {str(bot.user)}, on version {version}.")
     await bot.change_presence(activity=discord.Activity(name="/elevatorinfo", type=discord.ActivityType.listening))
 
     for guild in bot.guilds:
@@ -81,8 +81,7 @@ async def on_guild_remove(guild):
     for guild_id in utils.secret.error_guilds:
         if guild.id == guild_id:
             return
-    await utils.execute_sql(f"UPDATE set_guilds SET playing = '0', channel_id = NULL WHERE guild_id = '{guild.id}';",
-                            False)
+    await stop_music(guild.id)
     await utils.execute_sql("INSERT INTO stat_bot_guilds (action) VALUES ('remove');", False)
     utils.log("info", f"Guild leave {str(guild.id)}.")
     await update_guild_count()
@@ -103,9 +102,6 @@ async def on_voice_state_update(member, before, after):
                     return
             else:
                 if before.channel.permissions_for(member).connect is False:
-                    await utils.execute_sql(
-                        f"UPDATE set_guilds SET playing = '0', channel_id = NULL WHERE guild_id = '{member.guild.id}';",
-                        False)
                     await stop_music(member.guild.id)
                     return
                 else:
@@ -219,8 +215,8 @@ async def elevator_music(interaction: discord.Interaction):
         await utils.execute_sql(
             f"UPDATE set_guilds SET playing = '1', channel_id = '{interaction.user.voice.channel.id}' WHERE guild_id = '{interaction.guild.id}';",
             False)
-        await resume_music(interaction.guild.id, still_playing=False)
         utils.log("info", f"Successfully executed elevatormusic() on {interaction.guild.id}.")
+        await resume_music(interaction.guild.id, still_playing=False)
         await utils.execute_sql("INSERT INTO stat_command_music (action) VALUES ('executed');", False)
 
     except Exception:
@@ -258,9 +254,8 @@ async def elevator_shutdown(interaction: discord.Interaction):
             return
 
         await send_message(interaction, message=":( but ok,\n I am going to stop.", delete=10)
-        await utils.execute_sql(f"UPDATE set_guilds SET playing = '0', channel_id = NULL WHERE guild_id = '{interaction.guild.id}';", False)
-        await stop_music(interaction.guild.id)
         utils.log("info", f"Successfully executed elevatorshutdown() on {interaction.guild.id}.")
+        await stop_music(interaction.guild.id)
         await utils.execute_sql("INSERT INTO stat_command_shutdown (action) VALUES ('executed');", False)
 
     except Exception:
@@ -286,8 +281,6 @@ async def resume_music(guild_id, still_playing=True):
 
     try:
         if guild is None or channel is None or channel.permissions_for(guild.me).connect is False:
-            await utils.execute_sql(
-                f"UPDATE set_guilds SET playing = '0', channel_id = NULL WHERE guild_id = '{guild_id}';", False)
             await stop_music(guild_id)
             return
         else:
@@ -347,6 +340,8 @@ async def stop_music(guild_id):
                 voice.stop()
             await voice.disconnect()
             voice.cleanup()
+        if channel is not None:
+            await utils.execute_sql(f"UPDATE set_guilds SET playing = '0', channel_id = NULL WHERE guild_id = '{guild.id}';", False)
             utils.log("info", f"Stopped playing on guild {str(guild.id)}.")
     except Exception:
         trace = traceback.format_exc().rstrip("\n").split("\n")
