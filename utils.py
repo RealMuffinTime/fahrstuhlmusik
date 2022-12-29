@@ -75,7 +75,7 @@ async def execute_sql(sql_term, fetch):
         cursor.execute("SELECT * FROM stat_bot_online ORDER BY id DESC LIMIT 1")
         temp_fetch = cursor.fetchall()
 
-        def restart():
+        def log_startup():
             cursor.execute("INSERT INTO stat_bot_online (action) VALUES ('startup');")
             cursor.execute("INSERT INTO stat_bot_online (action) VALUES ('last seen');")
 
@@ -84,9 +84,9 @@ async def execute_sql(sql_term, fetch):
                 cursor.execute(
                     f"UPDATE stat_bot_online SET timestamp = '{get_curr_timestamp()}' WHERE id = '{temp_fetch[0][0]}';")
             else:
-                restart()
+                log_startup()
         else:
-            restart()
+            log_startup()
 
         if sql_term != "":
             cursor.execute(sql_term)
