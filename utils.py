@@ -102,7 +102,7 @@ async def execute_sql(sql_term, fetch):
         return []
 
 for file in os.listdir(os.getcwd()):
-    if file.startswith("secret_") and file.endswith(".py") :
+    if file.startswith("secret_") and file.endswith(".py"):
         if file.startswith("secret_dev"):
             import secret_dev as secret
             break

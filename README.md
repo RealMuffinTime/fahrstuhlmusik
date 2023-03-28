@@ -12,4 +12,4 @@
 
 - If you have questions, feel free to ask us by leaving a comment.
 
-*© 2020 - 2022*
+*© 2020 - 2023*

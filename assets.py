@@ -6,8 +6,8 @@ list_reviews = [
     "[Review](https://top.gg/bot/669888310507995136reviews)",
     "[View](https://bots.ondiscord.xyz/bots/669888310507995136) --- "
     "[Review](https://bots.ondiscord.xyz/bots/669888310507995136/review)",
-    "[View](https://discordbotlist.com/bots/fahrstuhlmusik) --- "
-    "[Vote](https://discordbotlist.com/bots/fahrstuhlmusik/upvote)",
+    "[View](https://discordbotlist.com/bots/669888310507995136) --- "
+    "[Vote](https://discordbotlist.com/bots/669888310507995136/upvote)",
     "[View](https://abstractlist.com/bot/669888310507995136) --- "
     "[Vote](https://abstractlist.com/bot/669888310507995136/vote)",
     "[View](https://discord.bots.gg/bots/669888310507995136)",
