@@ -1,12 +1,15 @@
 import asyncio
 import aiohttp
 import assets
+import datetime
 import discord
+import io
 import textwrap
 import traceback
 import utils
 from discord import app_commands
 from discord.utils import get
+from PIL import Image, ImageDraw, ImageFont
 
 # TODO get caught disconnected by hand, error still some issues (dont know what to do)
 # TODO tests for performance improvements ???
@@ -24,10 +27,10 @@ from discord.utils import get
 # TODO implement shards
 
 
-# Version 2.0.0 ->
+# Version 2.0.0 -> 2.0.1
 #
 # New stuff
-#  -
+#  - the bot changes its profile picture with guild count
 # Changes
 #  - Improved `/elevatorinfo` command
 #  - Add missing exception catchers
@@ -44,6 +47,8 @@ bot = discord.Client(
 )
 
 bot.tree = app_commands.CommandTree(bot)
+
+last_profile_update = datetime.datetime.min
 
 
 async def main():
@@ -351,6 +356,40 @@ async def stop_music(guild):
         return Exception
 
 
+async def update_profile_picture():
+    try:
+        global last_profile_update
+        if datetime.datetime.now() - last_profile_update > datetime.timedelta(days=1):
+            img = Image.open(f"fahrstuhlmusik_{utils.secret.secret}.png")
+
+            font = ImageFont.truetype("bahnschrift.ttf", size=80)
+
+            font.set_variation_by_name("Bold SemiCondensed")
+
+            draw_img = ImageDraw.Draw(img)
+
+            if utils.secret.secret == "master":
+                fill = (255, 34, 65)
+            else:
+                fill = (150, 150, 150)
+
+            draw_img.text(xy=(565, 92), font=font, text=str(len(bot.guilds)), anchor="mm", fill=fill)
+
+            img.save(f"fahrstuhlmusik_{utils.secret.secret}_edited.png")
+
+            last_profile_update = datetime.datetime.now()
+
+            io_img = io.BytesIO()
+            img.save(io_img, format='PNG')
+
+            await bot.user.edit(avatar=io_img.getvalue())
+
+            utils.log("info", "Updated profile picture.")
+    except Exception:
+        trace = traceback.format_exc().rstrip("\n").split("\n")
+        utils.on_error("update_profile_picture()", *trace)
+
+
 async def update_guild_count():
     try:
         guild_count = len(bot.guilds)
@@ -416,6 +455,7 @@ async def update_guild_count():
     except Exception:
         trace = traceback.format_exc().rstrip("\n").split("\n")
         utils.on_error("update_guild_count()", *trace)
+    await update_profile_picture()
 
 
 async def send_message(interaction, message=None, embed=None, delete=None):

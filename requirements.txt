@@ -3,3 +3,4 @@ mariadb
 PyNaCl
 shortuuid
 websockets
+Pillow
