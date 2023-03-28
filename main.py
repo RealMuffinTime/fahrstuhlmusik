@@ -27,18 +27,16 @@ from PIL import Image, ImageDraw, ImageFont
 # TODO implement shards
 
 
-# Version 2.0.0 -> 2.0.1
+# Version 2.0.1 ->
 #
 # New stuff
-#  - the bot changes its profile picture with guild count
+#  -
 # Changes
-#  - Improved `/elevatorinfo` command
-#  - Add missing exception catchers
-#  - Internal clean up
+#  -
 # Known issues
 #  - disconnect by user is not handled correctly
 
-version = "2.0.0"
+version = "2.0.1"
 
 bot = discord.Client(
     description='Plays hours and hours elevator music.',
