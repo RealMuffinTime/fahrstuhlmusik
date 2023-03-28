@@ -297,8 +297,8 @@ async def resume_music(guild_id, still_playing=True):
                 return
             elif not voice.is_playing():
                 # ffmpeg_options = {'before_options': '-stream_loop -1'}
-                # audio_source = discord.FFmpegPCMAudio(utils.secret.audio_name, **ffmpeg_options)
-                audio_source = discord.FFmpegPCMAudio(utils.secret.audio_name)
+                # audio_source = discord.FFmpegPCMAudio(f"audio_{utils.secret.secret}.mp3", **ffmpeg_options)
+                audio_source = discord.FFmpegPCMAudio(f"audio_{utils.secret.secret}.mp3")
                 voice.play(audio_source, after=lambda error: after_music(error, guild_id))
                 voice.source.volume = 0.3
                 if still_playing is False:
