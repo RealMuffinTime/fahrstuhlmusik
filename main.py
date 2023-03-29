@@ -295,7 +295,7 @@ async def play_music(guild, still_playing=True):
                 # ffmpeg_options = {'before_options': '-stream_loop -1'}
                 # audio_source = discord.FFmpegPCMAudio(f"audio_{utils.secret.secret}.mp3", **ffmpeg_options)
                 audio_source = discord.FFmpegPCMAudio(f"audio_{utils.secret.secret}.mp3")
-                voice.play(audio_source, after=lambda error: after_music(error, guild.id))
+                voice.play(audio_source, after=lambda error: after_music(error, guild))
                 voice.source.volume = 0.3
                 if still_playing is False:
                     utils.log("info", f"Started playing on guild {str(guild.id)} in channel {str(channel.id)}.")
@@ -372,8 +372,6 @@ async def update_profile_picture():
                 fill = (150, 150, 150)
 
             draw_img.text(xy=(565, 92), font=font, text=str(len(bot.guilds)), anchor="mm", fill=fill)
-
-            img.save(f"fahrstuhlmusik_{utils.secret.secret}_edited.png")
 
             last_profile_update = datetime.datetime.now()
 
