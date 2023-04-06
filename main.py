@@ -66,7 +66,11 @@ async def on_ready():
 
     playing_guilds = await utils.execute_sql("SELECT guild_id FROM set_guilds WHERE playing = 1;", True)
     for row in playing_guilds:
-        await play_music(bot.get_guild(row[0]), still_playing=False)
+        guild = bot.get_guild(row[0])
+        if guild is None:
+            await stop_music(row[0], none=True)
+        else:
+            await play_music(guild, still_playing=False)
     while True:
         await utils.execute_sql("", False)
         await asyncio.sleep(30)
@@ -334,13 +338,18 @@ async def pause_music(guild):
         return Exception
 
 
-async def stop_music(guild):
+async def stop_music(guild, none=False):
+    if none:
+        guild = discord.Object(id=guild)
     row = await utils.execute_sql(f"SELECT * FROM set_guilds WHERE guild_id = {guild.id};", True)
     channel = bot.get_channel(row[0][2])
 
     try:
         await utils.execute_sql(f"UPDATE set_guilds SET playing = '0', channel_id = NULL WHERE guild_id = '{guild.id}';", False)
-        voice = guild.voice_client
+        if none:
+            voice = None
+        else:
+            voice = guild.voice_client
         if voice is not None:
             if voice.is_playing():
                 voice.stop()
