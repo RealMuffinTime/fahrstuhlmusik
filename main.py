@@ -8,7 +8,6 @@ import textwrap
 import traceback
 import utils
 from discord import app_commands
-from discord.utils import get
 from PIL import Image, ImageDraw, ImageFont
 
 # TODO get caught disconnected by hand, error still some issues (dont know what to do)
@@ -27,12 +26,12 @@ from PIL import Image, ImageDraw, ImageFont
 # TODO implement shards
 
 
-# Version 2.0.1 ->
+# Version 2.0.1 -> 2.0.2
 #
 # New stuff
 #  -
 # Changes
-#  -
+#  - fix issues from changes in last release
 # Known issues
 #  - disconnect by user is not handled correctly
 
@@ -118,8 +117,7 @@ async def on_voice_state_update(member, before, after):
                 await utils.execute_sql(
                     f"UPDATE set_guilds SET playing = '1', channel_id = '{after.channel.id}' WHERE guild_id = '{member.guild.id}';",
                     False)
-                await play_music(member.guild)
-                return
+                await pause_music(member.guild)
 
         voice = member.guild.voice_client
         if voice is not None:
@@ -290,7 +288,7 @@ async def play_music(guild, still_playing=True):
             await stop_music(guild)
             return
         else:
-            voice = get(bot.voice_clients, guild=guild)
+            voice = guild.voice_client
             if voice is None:
                 voice = await channel.connect(self_deaf=True)
             if voice.channel != channel:
@@ -305,8 +303,9 @@ async def play_music(guild, still_playing=True):
                     utils.log("info", f"Started playing on guild {str(guild.id)} in channel {str(channel.id)}.")
                 if len(channel.voice_states.keys()) <= 1 and not voice.is_paused():
                     await pause_music(guild)
-            else:
-                asyncio.run_coroutine_threadsafe(play_music(guild), bot.loop).result()
+            # else:
+            #     asyncio.run_coroutine_threadsafe(play_music(guild), bot.loop).result()
+            #     ^ This creates more issues than resolving anything? What should it do in the first place???
 
     except Exception:
         trace = traceback.format_exc().rstrip("\n").split("\n")
