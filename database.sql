@@ -31,8 +31,8 @@ CREATE TABLE IF NOT EXISTS `set_users` (
 -- stat_bot_guilds
 CREATE TABLE IF NOT EXISTS `stat_bot_guilds` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `action` varchar(50) NOT NULL,
-  `timestamp` datetime NOT NULL DEFAULT curtime(),
+  `startup` datetime NOT NULL,
+  `last_heartbeat` datetime NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 

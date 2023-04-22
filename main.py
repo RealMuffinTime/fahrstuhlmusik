@@ -55,8 +55,7 @@ async def main():
 
 @bot.event
 async def on_ready():
-    utils.get_start_timestamp()
-    utils.log("info", f"Logged in as {str(bot.user)}, on version {version}.")
+    utils.log("info", f"Logged in as {str(bot.user)}, on version {version}, in session {str(utils.session_id)}.")
     await bot.change_presence(activity=discord.Activity(name="/elevatorinfo", type=discord.ActivityType.listening))
 
     for guild in bot.guilds:
@@ -72,7 +71,7 @@ async def on_ready():
             await play_music(guild, still_playing=False)
     while True:
         await utils.execute_sql("", False)
-        await asyncio.sleep(30)
+        await asyncio.sleep(60)
 
 
 @bot.event

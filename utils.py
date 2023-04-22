@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import mariadb
 import os
@@ -5,11 +6,9 @@ import shortuuid
 import traceback
 
 
-# TODO rework online status
-
-
-start_timestamp = None
 db_connection = None
+start_timestamp = None
+session_id = None
 
 
 def get_start_timestamp():
@@ -73,20 +72,10 @@ async def execute_sql(sql_term, fetch):
         cursor = get_db_connection().cursor(buffered=True)
         cursor.execute(f"USE `{secret.database_name}`")
         cursor.execute("SELECT * FROM stat_bot_online ORDER BY id DESC LIMIT 1")
-        temp_fetch = cursor.fetchall()
+        temp_fetch = cursor.fetchall()[0]
 
-        def log_startup():
-            cursor.execute("INSERT INTO stat_bot_online (action) VALUES ('startup');")
-            cursor.execute("INSERT INTO stat_bot_online (action) VALUES ('last seen');")
-
-        if temp_fetch:
-            if temp_fetch[0][1] == 'last seen' and (get_curr_timestamp(True) - temp_fetch[0][2]).seconds < 60:
-                cursor.execute(
-                    f"UPDATE stat_bot_online SET timestamp = '{get_curr_timestamp()}' WHERE id = '{temp_fetch[0][0]}';")
-            else:
-                log_startup()
-        else:
-            log_startup()
+        if (get_curr_timestamp(True) - temp_fetch[2]).seconds >= 60:
+            cursor.execute(f"UPDATE stat_bot_online SET last_heartbeat = '{get_curr_timestamp()}' WHERE id = '{temp_fetch[0]}';")
 
         if sql_term != "":
             cursor.execute(sql_term)
@@ -100,6 +89,12 @@ async def execute_sql(sql_term, fetch):
         trace = traceback.format_exc().rstrip("\n").split("\n")
         on_error(f"execute_sql(), fetch: {fetch}", f"{sql_term}", *trace)
         return []
+
+
+async def startup():
+    global session_id
+    await execute_sql(f"INSERT INTO stat_bot_online (startup, last_heartbeat) VALUES ('{get_start_timestamp()}', '{get_curr_timestamp()}')", False)
+    session_id = (await execute_sql("SELECT * FROM stat_bot_online ORDER BY id DESC LIMIT 1", True))[0][0]
 
 for file in os.listdir(os.getcwd()):
     if file.startswith("secret_") and file.endswith(".py"):
@@ -115,3 +110,5 @@ for file in os.listdir(os.getcwd()):
 
             log("error", "No secret file found exiting.")
             exit()
+
+asyncio.run(startup())
