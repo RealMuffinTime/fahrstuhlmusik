@@ -71,11 +71,12 @@ async def execute_sql(sql_term, fetch):
     try:
         cursor = get_db_connection().cursor(buffered=True)
         cursor.execute(f"USE `{secret.database_name}`")
-        cursor.execute("SELECT * FROM stat_bot_online ORDER BY id DESC LIMIT 1")
-        temp_fetch = cursor.fetchall()[0]
+        if session_id is not None:
+            cursor.execute(f"SELECT last_heartbeat FROM stat_bot_online WHERE id = '{session_id}'")
+            last_heartbeat = cursor.fetchall()[0][0]
 
-        if (get_curr_timestamp(True) - temp_fetch[2]).seconds >= 60:
-            cursor.execute(f"UPDATE stat_bot_online SET last_heartbeat = '{get_curr_timestamp()}' WHERE id = '{temp_fetch[0]}';")
+            if (get_curr_timestamp(True) - last_heartbeat).seconds >= 60:
+                cursor.execute(f"UPDATE stat_bot_online SET last_heartbeat = '{get_curr_timestamp()}' WHERE id = '{session_id}'")
 
         if sql_term != "":
             cursor.execute(sql_term)
