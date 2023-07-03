@@ -6,7 +6,6 @@ database_port = 3306
 database_user = ""
 database_pass = ""
 database_name = ""
-error_guilds = []
 list_tokens = [
      "",
      "",

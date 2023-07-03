@@ -86,9 +86,10 @@ async def on_guild_join(guild):
 
 @bot.event
 async def on_guild_remove(guild):
-    for guild_id in utils.secret.error_guilds:
-        if guild.id == guild_id:
-            return
+    error_guilds = [814476583347814430, 846765917505716254, 856861615667675156, 901538946222293002, 904222851647823873]
+    if guild.id in error_guilds:
+        utils.log("info", f"Guild leave skipped for {str(guild.id)}.")
+        return
     await stop_music(guild)
     await utils.execute_sql("INSERT INTO stat_bot_guilds (action) VALUES ('remove');", False)
     utils.log("info", f"Guild leave {str(guild.id)}.")
