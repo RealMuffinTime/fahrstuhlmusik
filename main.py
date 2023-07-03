@@ -163,12 +163,10 @@ async def elevator_review(interaction: discord.Interaction):
         embed.set_thumbnail(
             url="https://cdn.discordapp.com/attachments/707514263077388320/730372388130258964/fahrstuhlmusik_logo.png")
 
-        for site in assets.list_names:
-            if site != "Abstract List":
-                review = assets.list_reviews[assets.list_names.index(site)]
-                embed.add_field(name=site, value=review, inline=True)
-                embed.add_field(name="\u200b", value="\u200b", inline=True)
-                embed.add_field(name="\u200b", value="\u200b", inline=True)
+        for site in assets.list_sites:
+            embed.add_field(name=site[0], value=site[1], inline=True)
+            embed.add_field(name="\u200b", value="\u200b", inline=True)
+            embed.add_field(name="\u200b", value="\u200b", inline=True)
 
         await send_message(interaction, embed=embed)
         utils.log("info", f"Successfully executed elevatorreview() on {interaction.guild.id}.")
@@ -410,52 +408,44 @@ async def update_guild_count():
                 await utils.execute_sql("INSERT INTO stat_bot_guilds (action) VALUES ('add');", False)
 
         if utils.secret.secret == "master":
-            sites = [[], [], [], [], [], []]
-            sites_assets = [
-                assets.list_names_short,
-                assets.list_update_url,
-                utils.secret.list_tokens,
-                assets.list_update_json,
-                assets.list_update_code,
-                assets.list_update_temp
-            ]
+            sites = assets.list_sites
 
-            for asset in sites_assets:
-                for tag in enumerate(asset):
-                    sites[tag[0]].append(tag[1])
+            i = 0
+            while i < len(utils.secret.list_tokens):
+                sites[i].append(utils.secret.list_tokens[i])
+                i += 1
 
             async def request(site, session):
                 try:
-                    async with session.post(url=site[1] % str(bot.user.id),
-                                            headers={'Authorization': site[2], 'Content-Type': 'application/json'},
+                    async with session.post(url=site[2] % str(bot.user.id),
+                                            headers={'Authorization': site[4], 'Content-Type': 'application/json'},
                                             json={site[3]: len(bot.guilds)}) as response:
                         if response is None:
-                            site[5] = "Error"
-                        elif response.status == site[4]:
+                            site.append("request failed: No response")
+                        elif str(response.status).startswith("20"):
                             if str(await response.text()).startswith('{"error":true,'):
-                                site[5] = textwrap.shorten(str(await response.text()), width=50)
+                                site.append("request failed: " + textwrap.shorten(str(await response.text()), width=50))
                             else:
-                                site[5] = "Ok"
+                                site.append("request success")
                         else:
-                            site[5] = textwrap.shorten(str(response.status), width=50)
+                            site.append("request failed: " + textwrap.shorten(str(response.status), width=50))
 
                 except Exception:
-                    site[5] = "Error"
+                    site.append("request failed: Exception")
                     trace = traceback.format_exc().rstrip("\n").split("\n")
                     utils.on_error("request()", *trace)
 
             async with aiohttp.ClientSession() as session1:
                 await asyncio.gather(*[asyncio.ensure_future(request(site, session1)) for site in sites], return_exceptions=True)
 
-            status = ""
+            status = []
             for site in sites:
-                status += site[0] + ": " + site[5]
-                if sites.index(site) != sites.index(sites[-1]):
-                    status += ", "
-                else:
-                    status += "."
+                if site[-1].startswith("request failed"):
+                    status.append(site[0] + " " + site[-1].strip(".") + ".")
 
-            utils.log("info", f"Currently serving {str(guild_count)} guilds.", f"Updated " + status)
+            status.insert(0, f"Updated {len(sites) - len(status)}/{len(sites)} sites.")
+
+            utils.log("info", f"Currently serving {str(guild_count)} guilds.", *status)
     except Exception:
         trace = traceback.format_exc().rstrip("\n").split("\n")
         utils.on_error("update_guild_count()", *trace)

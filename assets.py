@@ -1,30 +1,40 @@
-list_names = ["Tog.gg", "Bots on Discord", "Discord Bot List", "Abstract List", "Discord Bots", "Discords"]
-list_names_short = ["Tgg", "BoD", "DBL", "AL", "DB", "Ds"]
-list_reviews = [
-    "[View](https://top.gg/bot/669888310507995136) --- "
-    "[Vote](https://top.gg/bot/669888310507995136/vote) --- "
-    "[Review](https://top.gg/bot/669888310507995136reviews)",
-    "[View](https://bots.ondiscord.xyz/bots/669888310507995136) --- "
-    "[Review](https://bots.ondiscord.xyz/bots/669888310507995136/review)",
-    "[View](https://discordbotlist.com/bots/669888310507995136) --- "
-    "[Vote](https://discordbotlist.com/bots/669888310507995136/upvote)",
-    "[View](https://abstractlist.com/bot/669888310507995136) --- "
-    "[Vote](https://abstractlist.com/bot/669888310507995136/vote)",
-    "[View](https://discord.bots.gg/bots/669888310507995136)",
-    "[View](https://discords.com/bots/bot/669888310507995136) --- "
-    "[Vote](https://discords.com/bots/bot/669888310507995136/vote)",
+list_sites = [
+    [
+        "Tog.gg",
+        "[View](https://top.gg/bot/669888310507995136) --- "
+        "[Vote](https://top.gg/bot/669888310507995136/vote) --- "
+        "[Review](https://top.gg/bot/669888310507995136reviews)",
+        "https://top.gg/api/bots/%s/stats",
+        "server_count"
+    ],
+    [
+        "Discords",
+        "[View](https://discords.com/bots/bot/669888310507995136) --- "
+        "[Vote](https://discords.com/bots/bot/669888310507995136/vote)",
+        "https://discords.com/bots/api/bot/%s",
+        "server_count"
+    ],
+    [
+        "Bots on Discord",
+        "[View](https://bots.ondiscord.xyz/bots/669888310507995136) --- "
+        "[Review](https://bots.ondiscord.xyz/bots/669888310507995136/review)",
+        "https://bots.ondiscord.xyz/bot-api/bots/%s/guilds",
+        "guildCount"
+    ],
+    [
+        "Discord Bot List",
+        "[View](https://discordbotlist.com/bots/669888310507995136) --- "
+        "[Vote](https://discordbotlist.com/bots/669888310507995136/upvote)",
+        "https://discordbotlist.com/api/v1/bots/%s/stats",
+        "guilds"
+    ],
+    [
+        "Discord Bots",
+        "[View](https://discord.bots.gg/bots/669888310507995136)",
+        "https://discord.bots.gg/api/v1/bots/%s/stats",
+        "guildCount"
+    ]
 ]
-list_update_url = [
-    "https://top.gg/api/bots/%s/stats",
-    "https://bots.ondiscord.xyz/bot-api/bots/%s/guilds",
-    "https://discordbotlist.com/api/v1/bots/%s/stats",
-    "https://abstractlist.tombeijner.com/api/bots/%s/stats",
-    "https://discord.bots.gg/api/v1/bots/%s/stats",
-    "https://discords.com/bots/api/bot/%s"
-]
-list_update_json = ["server_count", "guildCount", "guilds", "servers", "guildCount", "server_count"]
-list_update_code = [200, 204, 200, 200, 200, 200]
-list_update_temp = ["", "", "", "", "", ""]
 
 info_message = "A bot that plays **elevator music** for hours and hours.\n" \
                "For a support channel or even if you just like to listen to elevator music.\n\n" \
