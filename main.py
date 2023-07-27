@@ -60,14 +60,15 @@ async def on_ready():
     await bot.change_presence(activity=discord.Activity(name="/elevatorinfo", type=discord.ActivityType.listening))
 
     for guild in bot.guilds:
-        await utils.execute_sql(f"INSERT IGNORE INTO set_guilds VALUES ('{guild.id}', '0', NULL, NULL, NULL)", False)
+        await utils.execute_sql(f"INSERT IGNORE INTO set_guilds VALUES ('{guild.id}', '0', NULL, NULL)", False)
     await update_guild_count()
 
     playing_guilds = await utils.execute_sql("SELECT guild_id FROM set_guilds WHERE playing = 1;", True)
     for row in playing_guilds:
         guild = bot.get_guild(row[0])
         if guild is None:
-            await stop_music(row[0], none=True)
+            guild = discord.Object(id=row[0], type=discord.Guild)
+            await stop_music(guild)
         else:
             await play_music(guild, still_playing=False)
     while True:
@@ -78,7 +79,7 @@ async def on_ready():
 @bot.event
 async def on_guild_join(guild):
     await utils.execute_sql(
-        f"INSERT INTO set_guilds VALUES ('{guild.id}', '0', NULL, NULL, NULL) ON DUPLICATE KEY UPDATE playing = '0', channel_id = NULL",
+        f"INSERT INTO set_guilds VALUES ('{guild.id}', '0', NULL, NULL) ON DUPLICATE KEY UPDATE playing = '0', channel_id = NULL, playing_since = NULL",
         False)
     await utils.execute_sql("INSERT INTO stat_bot_guilds (action) VALUES ('add');", False)
     utils.log("info", f"Guild join {str(guild.id)}.")
@@ -105,8 +106,7 @@ async def on_voice_state_update(member, before, after):
                 return
             if after.channel is not None:
                 if after.channel.permissions_for(member).connect is False:
-                    await utils.execute_sql(f"UPDATE set_guilds SET playing = '1', channel_id = '{before.channel.id}' WHERE guild_id = '{member.guild.id}';", False)
-                    await play_music(member.guild)
+                    await play_music(member.guild, before.channel.id)
                     return
             else:
                 if before.channel.permissions_for(member).connect is False:
@@ -115,9 +115,7 @@ async def on_voice_state_update(member, before, after):
                 utils.log("info", f"Reconnect on guild {str(member.guild.id)}.")
                 return
             if after.channel.id != before.channel.id:
-                await utils.execute_sql(
-                    f"UPDATE set_guilds SET playing = '1', channel_id = '{after.channel.id}' WHERE guild_id = '{member.guild.id}';",
-                    False)
+                await utils.execute_sql(f"UPDATE set_guilds SET channel_id = '{after.channel.id}' WHERE guild_id = '{member.guild.id}';", False)
                 await pause_music(member.guild)
 
         voice = member.guild.voice_client
@@ -216,11 +214,8 @@ async def elevator_music(interaction: discord.Interaction):
             return
 
         await send_message(interaction, message="On command:\nPure relaxation.", delete=10)
-        await utils.execute_sql(
-            f"UPDATE set_guilds SET playing = '1', channel_id = '{interaction.user.voice.channel.id}' WHERE guild_id = '{interaction.guild.id}';",
-            False)
+        await play_music(interaction.guild, interaction.user.voice.channel.id, still_playing=False)
         utils.log("info", f"Successfully executed elevatormusic() on {interaction.guild.id}.")
-        await play_music(interaction.guild, still_playing=False)
         await utils.execute_sql("INSERT INTO stat_command_music (action) VALUES ('executed');", False)
 
     except Exception:
@@ -258,8 +253,8 @@ async def elevator_shutdown(interaction: discord.Interaction):
             return
 
         await send_message(interaction, message=":( but ok,\n I am going to stop.", delete=10)
-        utils.log("info", f"Successfully executed elevatorshutdown() on {interaction.guild.id}.")
         await stop_music(interaction.guild)
+        utils.log("info", f"Successfully executed elevatorshutdown() on {interaction.guild.id}.")
         await utils.execute_sql("INSERT INTO stat_command_shutdown (action) VALUES ('executed');", False)
 
     except Exception:
@@ -278,34 +273,48 @@ def after_music(error, guild):
     asyncio.run_coroutine_threadsafe(play_music(guild), bot.loop).result()
 
 
-async def play_music(guild, still_playing=True):
-    row = await utils.execute_sql(f"SELECT * FROM set_guilds WHERE guild_id = {guild.id};", True)
-    channel = bot.get_channel(row[0][2])
+async def play_music(guild, channel=None, still_playing=True):
     utils.log("info", f"Active threads: {threading.active_count()}.")
+
+    if channel:
+        if still_playing:
+            await utils.execute_sql(f"UPDATE set_guilds SET playing = '1', channel_id = '{channel}' WHERE guild_id = '{guild.id}';", False)
+        else:
+            await utils.execute_sql(f"UPDATE set_guilds SET playing = '1', channel_id = '{channel}', playing_since = '{datetime.datetime.now().replace(microsecond=0)}' WHERE guild_id = '{guild.id}';", False)
+        channel = bot.get_channel(channel)
+    else:
+        row = await utils.execute_sql(f"SELECT * FROM set_guilds WHERE guild_id = {guild.id};", True)
+        channel = bot.get_channel(row[0][2])
+
+    if threading.active_count() > 80:  # not very nice workaround
+        response = await utils.execute_sql(f"SELECT guild_id FROM set_guilds WHERE playing = 1 ORDER BY playing_since ASC LIMIT 1", True)
+        print(response)
+        stop_guild = bot.get_guild(response[0][0])
+        await stop_music(stop_guild)
+        utils.log("info", f"Manually stopped {stop_guild.id}.")
 
     try:
         if channel is None or channel.permissions_for(guild.me).connect is False:
             await stop_music(guild)
             return
-        else:
-            voice = guild.voice_client
-            if voice is None:
-                voice = await channel.connect(self_deaf=True)
-            if voice.channel != channel:
-                await voice.move_to(channel)
-            if voice.is_connected() and not voice.is_playing():
-                # ffmpeg_options = {'before_options': '-stream_loop -1'}
-                # audio_source = discord.FFmpegPCMAudio(f"audio_{utils.secret.secret}.mp3", **ffmpeg_options)
-                audio_source = discord.FFmpegPCMAudio(f"audio_{utils.secret.secret}.mp3")
-                voice.play(audio_source, after=lambda error: after_music(error, guild))
-                voice.source.volume = 0.3
-                if still_playing is False:
-                    utils.log("info", f"Started playing on guild {str(guild.id)} in channel {str(channel.id)}.")
-                if len(channel.voice_states.keys()) <= 1 and not voice.is_paused():
-                    await pause_music(guild)
-            # else:
-            #     asyncio.run_coroutine_threadsafe(play_music(guild), bot.loop).result()
-            #     ^ This creates more issues than resolving anything? What should it do in the first place???
+        voice = guild.voice_client
+        if voice is None:
+            voice = await channel.connect(self_deaf=True)
+        if voice.channel != channel:
+            await voice.move_to(channel)
+        if not guild.me.voice.self_deaf:
+            await guild.change_voice_state(self_deaf=True)
+        if voice.is_connected() and not voice.is_playing():
+            # ffmpeg_options = {'before_options': '-stream_loop -1'}
+            # audio_source = discord.FFmpegPCMAudio(f"audio_{utils.secret.secret}.mp3", **ffmpeg_options)
+            audio_source = discord.FFmpegPCMAudio(f"audio_{utils.secret.secret}.mp3")
+            utils.log("info", f"play_music on guild {guild.id}")
+            voice.play(audio_source, after=lambda error: after_music(error, guild))
+            voice.source.volume = 0.3
+            if still_playing is False:
+                utils.log("info", f"Started playing on guild {str(guild.id)} in channel {str(channel.id)}.")
+            if len(channel.voice_states.keys()) <= 1 and not voice.is_paused():
+                await pause_music(guild)
 
     except Exception:
         trace = traceback.format_exc().rstrip("\n").split("\n")
@@ -337,18 +346,13 @@ async def pause_music(guild):
         return Exception
 
 
-async def stop_music(guild, none=False):
-    if none:
-        guild = discord.Object(id=guild)
+async def stop_music(guild):
     row = await utils.execute_sql(f"SELECT * FROM set_guilds WHERE guild_id = {guild.id};", True)
     channel = bot.get_channel(row[0][2])
 
     try:
-        await utils.execute_sql(f"UPDATE set_guilds SET playing = '0', channel_id = NULL WHERE guild_id = '{guild.id}';", False)
-        if none:
-            voice = None
-        else:
-            voice = guild.voice_client
+        await utils.execute_sql(f"UPDATE set_guilds SET playing = '0', channel_id = NULL, playing_since = NULL WHERE guild_id = '{guild.id}';", False)
+        voice = guild.voice_client
         if voice is not None:
             if voice.is_playing():
                 voice.stop()
