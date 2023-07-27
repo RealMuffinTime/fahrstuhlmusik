@@ -10,6 +10,6 @@
 
 - Contact at [Discord Guild](https://discord.gg/Da9haye/).
 
-- If you have questions, feel free to ask us by leaving a comment.
+- If you have questions, feel free to ask.
 
 *© 2020 - 2023*

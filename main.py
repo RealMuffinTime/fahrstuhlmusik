@@ -5,25 +5,26 @@ import datetime
 import discord
 import io
 import textwrap
+import threading
 import traceback
 import utils
 from discord import app_commands
 from PIL import Image, ImageDraw, ImageFont
 
-# TODO get caught disconnected by hand, error still some issues (dont know what to do)
-# TODO tests for performance improvements ???
-# TODO find a fix for: task was destroyed but it is pending
+# TODO fix cant start new thread -> shards?
+# TODO fix music stopping at some point
+# TODO fix mute going away (^maybe they are connected)
+# TODO fix status going away (^maybe they are connected)
+# TODO fix disconnected by hand
+
+# TODO move to using only one music process
+# TODO use different music files, pick random, licensed, easter eggs
 #
-# TODO use different music files, pick random, these need to be licensed, easter eggs
-#
-# TODO website and statistics
+# TODO website, statistics and leaderboard
 # TODO move command - own channel which moves down and up (this one moves users form one to another channel, plays fitting sounds (door closes/opens, moving, elevator music) at the end it moves to its saved channel)
-# TODO settings command, leaderboard
 #
 # TODO open sauce
-#
 # TODO donate command
-# TODO implement shards
 
 
 # Version 2.0.1 -> 2.0.2
@@ -280,6 +281,7 @@ def after_music(error, guild):
 async def play_music(guild, still_playing=True):
     row = await utils.execute_sql(f"SELECT * FROM set_guilds WHERE guild_id = {guild.id};", True)
     channel = bot.get_channel(row[0][2])
+    utils.log("info", f"Active threads: {threading.active_count()}.")
 
     try:
         if channel is None or channel.permissions_for(guild.me).connect is False:
