@@ -13,8 +13,8 @@ from PIL import Image, ImageDraw, ImageFont
 
 # TODO fix cant start new thread -> shards?
 # TODO fix music stopping at some point
-# TODO fix mute going away (^maybe they are connected)
 # TODO fix status going away (^maybe they are connected)
+# TODO fix mute going away (could be fixed and not connected to the others)
 # TODO fix disconnected by hand
 
 # TODO move to using only one music process
@@ -33,6 +33,8 @@ from PIL import Image, ImageDraw, ImageFont
 #  -
 # Changes
 #  - fix issues from changes in last release
+#  - Improved logic for pausing, resuming and restarting music
+#  - Improved message and error sending/handling
 # Known issues
 #  - disconnect by user is not handled correctly
 
@@ -154,10 +156,7 @@ async def elevator_info(interaction: discord.Interaction):
         await utils.execute_sql("INSERT INTO stat_command_info (action) VALUES ('executed');", False)
     except Exception:
         trace = traceback.format_exc().rstrip("\n").split("\n")
-        await send_message(interaction, message="There has been a error.\n"
-                           "For further information contact the support.\n"
-                           "https://discord.gg/Da9haye\n"
-                           f"Your error code is **{utils.on_error('elevator_info()', *trace)}**.", delete=30)
+        await send_error(interaction, error=utils.on_error('elevator_info()', *trace))
         utils.log("info", f"Thrown an error while executing elevatorinfo() on {interaction.guild.id}.")
         await utils.execute_sql("INSERT INTO stat_command_info (action) VALUES ('error');", False)
 
@@ -186,10 +185,7 @@ async def elevator_review(interaction: discord.Interaction):
         await utils.execute_sql("INSERT INTO stat_command_review (action) VALUES ('executed');", False)
     except Exception:
         trace = traceback.format_exc().rstrip("\n").split("\n")
-        await send_message(interaction, message="There has been a error.\n"
-                                                "For further information contact the support.\n"
-                                                "https://discord.gg/Da9haye\n"
-                                                f"Your error code is **{utils.on_error('elevator_review()', *trace)}**.", delete=30)
+        await send_error(interaction, error=utils.on_error('elevator_review()', *trace))
         utils.log("info", f"Thrown an error while executing elevatorreview() on {interaction.guild.id}.")
         await utils.execute_sql("INSERT INTO stat_command_review (action) VALUES ('error');", False)
 
@@ -241,10 +237,7 @@ async def elevator_music(interaction: discord.Interaction):
 
     except Exception:
         trace = traceback.format_exc().rstrip("\n").split("\n")
-        await send_message(interaction, message="There has been a error.\n"
-                                                "For further information contact the support.\n"
-                                                "https://discord.gg/Da9haye\n"
-                                                f"Your error code is **{utils.on_error('elevator_music()', *trace)}**.", delete=30)
+        await send_error(interaction, error=utils.on_error('elevator_music()', *trace))
         utils.log("info", f"Thrown an error while executing elevatormusic() on {interaction.guild.id}.")
         await utils.execute_sql("INSERT INTO stat_command_music (action) VALUES ('error');", False)
 
@@ -280,10 +273,7 @@ async def elevator_shutdown(interaction: discord.Interaction):
 
     except Exception:
         trace = traceback.format_exc().rstrip("\n").split("\n")
-        await send_message(interaction, message="There has been a error.\n"
-                                                "For further information contact the support.\n"
-                                                "https://discord.gg/Da9haye\n"
-                                                f"Your error code is **{utils.on_error('elevator_shutdown()', *trace)}**.", delete=30)
+        await send_error(interaction, error=utils.on_error('elevator_shutdown()', *trace))
         utils.log("info", f"Thrown an error while executing elevatorshutdown() on {interaction.guild.id}.")
         await utils.execute_sql("INSERT INTO stat_command_shutdown (action) VALUES ('error');", False)
 
@@ -295,8 +285,6 @@ def after_music(error, guild):
 
 
 async def play_music(guild, channel=None, still_playing=True):
-    utils.log("info", f"Active threads: {threading.active_count()}.")
-
     if channel:
         if still_playing:
             await utils.execute_sql(f"UPDATE set_guilds SET playing = '1', channel_id = '{channel.id}' WHERE guild_id = '{guild.id}';", False)
@@ -312,191 +300,158 @@ async def play_music(guild, channel=None, still_playing=True):
         await stop_music(stop_guild)
         utils.log("info", f"Manually stopped {stop_guild.id}.")
 
-    try:
-        if channel is None or channel.permissions_for(guild.me).connect is False:
-            await stop_music(guild)
-            return
-        voice = guild.voice_client
-        utils.log("info", str(voice))
-        if voice is None:
-            voice = await channel.connect(self_deaf=True)
-        if not voice.is_connected():
-            await voice.disconnect(force=True)
-            voice = await channel.connect(self_deaf=True)
-        if voice.channel != channel:
-            await voice.move_to(channel)
-        if voice.is_connected() and not voice.is_playing():
-            # ffmpeg_options = {'before_options': '-stream_loop -1'}
-            # audio_source = discord.FFmpegPCMAudio(f"audio_{utils.secret.secret}.mp3", **ffmpeg_options)
-            audio_source = discord.FFmpegPCMAudio(f"audio_{utils.secret.secret}.mp3")
-            utils.log("info", f"play_music on guild {guild.id}")
-            voice.play(audio_source, after=lambda error: after_music(error, guild))
-            voice.source.volume = 0.3
-            if still_playing is False:
-                utils.log("info", f"Started playing on guild {str(guild.id)} in channel {str(channel.id)}.")
-            if len(channel.voice_states.keys()) <= 1 and not voice.is_paused():
-                await pause_music(guild)
+    utils.log("info", f"Active threads: {threading.active_count()}.")
 
-    except Exception:
-        trace = traceback.format_exc().rstrip("\n").split("\n")
-        return utils.on_error("play_music()", *trace, f"Error on guild {str(guild.id)}.")
+    if channel is None or channel.permissions_for(guild.me).connect is False:
+        await stop_music(guild)
+        return
+    voice = guild.voice_client
+    if voice is None:
+        voice = await channel.connect(self_deaf=True)
+    if not voice.is_connected():
+        await voice.disconnect(force=True)
+        voice = await channel.connect(self_deaf=True)
+    if voice.channel != channel:
+        await voice.move_to(channel)
+    if voice.is_connected() and not voice.is_playing():
+        # ffmpeg_options = {'before_options': '-stream_loop -1'}
+        # audio_source = discord.FFmpegPCMAudio(f"audio_{utils.secret.secret}.mp3", **ffmpeg_options)
+        audio_source = discord.FFmpegPCMAudio(f"audio_{utils.secret.secret}.mp3")
+        voice.play(audio_source, after=lambda error: after_music(error, guild))
+        utils.log("info", f"Playing file on guild {guild.id}, active threads: {threading.active_count()}.")
+        voice.source.volume = 0.3
+        if still_playing is False:
+            utils.log("info", f"Started playing on guild {str(guild.id)} in channel {str(channel.id)}.")
+        if len(channel.voice_states.keys()) <= 1 and not voice.is_paused():
+            await pause_music(guild)
 
 
 async def resume_music(guild):
-    try:
-        voice = guild.voice_client
-        if voice is not None and voice.is_playing() and voice.is_paused():
-            voice.resume()
-            utils.log("info", f"Resumed playing on guild {str(guild.id)} in channel {str(voice.channel.id)}.")
-    except Exception:
-        trace = traceback.format_exc().rstrip("\n").split("\n")
-        utils.on_error("resume_music()", *trace, f"Error on guild {str(guild.id)}.")
-        return Exception
+    voice = guild.voice_client
+    if voice is not None and voice.is_paused():
+        voice.resume()
+        utils.log("info", f"Resumed playing on guild {str(guild.id)} in channel {str(voice.channel.id)}.")
 
 
 async def pause_music(guild):
-    try:
-        voice = guild.voice_client
-        if voice is not None and voice.is_playing() and not voice.is_paused():
-            voice.pause()
-            utils.log("info", f"Paused playing on guild {str(guild.id)} in channel {str(voice.channel.id)}.")
-    except Exception:
-        trace = traceback.format_exc().rstrip("\n").split("\n")
-        utils.on_error("pause_music()", *trace, f"Error on guild {str(guild.id)}.")
-        return Exception
+    voice = guild.voice_client
+    if voice is not None and not voice.is_paused():
+        voice.pause()
+        utils.log("info", f"Paused playing on guild {str(guild.id)} in channel {str(voice.channel.id)}.")
 
 
 async def stop_music(guild):
     row = await utils.execute_sql(f"SELECT * FROM set_guilds WHERE guild_id = {guild.id};", True)
     channel = bot.get_channel(row[0][2])
 
-    try:
-        await utils.execute_sql(f"UPDATE set_guilds SET playing = '0', channel_id = NULL, playing_since = NULL WHERE guild_id = '{guild.id}';", False)
-        voice = guild.voice_client
-        if voice is not None:
-            if voice.is_playing():
-                voice.stop()
-            await voice.disconnect(force=True)
-            voice.cleanup()
-        if channel is not None:
-            utils.log("info", f"Stopped playing on guild {str(guild.id)}.")
-    except Exception:
-        trace = traceback.format_exc().rstrip("\n").split("\n")
-        utils.on_error("stop_music()", *trace, f"Error on guild {str(guild.id)}.")
-        return Exception
+    await utils.execute_sql(f"UPDATE set_guilds SET playing = '0', channel_id = NULL, playing_since = NULL WHERE guild_id = '{guild.id}';", False)
+    voice = guild.voice_client
+    if voice is not None:
+        if voice.is_playing():
+            voice.stop()
+        await voice.disconnect(force=True)
+        voice.cleanup()
+    if channel is not None:
+        utils.log("info", f"Stopped playing on guild {str(guild.id)}.")
 
 
 async def update_profile_picture():
-    try:
-        global last_profile_update
-        if datetime.datetime.now() - last_profile_update > datetime.timedelta(days=1):
-            img = Image.open(f"fahrstuhlmusik_{utils.secret.secret}.png")
+    global last_profile_update
+    if datetime.datetime.now() - last_profile_update > datetime.timedelta(days=1):
+        img = Image.open(f"fahrstuhlmusik_{utils.secret.secret}.png")
 
-            font = ImageFont.truetype("bahnschrift.ttf", size=80)
+        font = ImageFont.truetype("bahnschrift.ttf", size=80)
 
-            font.set_variation_by_name("Bold SemiCondensed")
+        font.set_variation_by_name("Bold SemiCondensed")
 
-            draw_img = ImageDraw.Draw(img)
+        draw_img = ImageDraw.Draw(img)
 
-            if utils.secret.secret == "master":
-                fill = (255, 34, 65)
-            else:
-                fill = (150, 150, 150)
+        if utils.secret.secret == "master":
+            fill = (255, 34, 65)
+        else:
+            fill = (150, 150, 150)
 
-            draw_img.text(xy=(565, 92), font=font, text=str(len(bot.guilds)), anchor="mm", fill=fill)
+        draw_img.text(xy=(565, 92), font=font, text=str(len(bot.guilds)), anchor="mm", fill=fill)
 
-            last_profile_update = datetime.datetime.now()
+        last_profile_update = datetime.datetime.now()
 
-            io_img = io.BytesIO()
-            img.save(io_img, format='PNG')
+        io_img = io.BytesIO()
+        img.save(io_img, format='PNG')
 
-            await bot.user.edit(avatar=io_img.getvalue())
+        await bot.user.edit(avatar=io_img.getvalue())
 
-            utils.log("info", "Updated profile picture.")
-    except Exception:
-        trace = traceback.format_exc().rstrip("\n").split("\n")
-        utils.on_error("update_profile_picture()", *trace)
+        utils.log("info", "Updated profile picture.")
 
 
 async def update_guild_count():
-    try:
-        guild_count = len(bot.guilds)
-        guild_count_db = len(
-            await utils.execute_sql("SELECT * FROM stat_bot_guilds WHERE action = 'add';", True)) - len(
-            await utils.execute_sql("SELECT * FROM stat_bot_guilds WHERE action = 'remove';", True))
-        if guild_count < guild_count_db:
-            diff = guild_count_db - guild_count
-            for count in range(diff):
-                await utils.execute_sql("INSERT INTO stat_bot_guilds (action) VALUES ('remove');", False)
-        elif guild_count > guild_count_db:
-            diff = guild_count - guild_count_db
-            for count in range(diff):
-                await utils.execute_sql("INSERT INTO stat_bot_guilds (action) VALUES ('add');", False)
+    guild_count = len(bot.guilds)
+    guild_count_db = len(
+        await utils.execute_sql("SELECT * FROM stat_bot_guilds WHERE action = 'add';", True)) - len(
+        await utils.execute_sql("SELECT * FROM stat_bot_guilds WHERE action = 'remove';", True))
+    if guild_count < guild_count_db:
+        diff = guild_count_db - guild_count
+        for count in range(diff):
+            await utils.execute_sql("INSERT INTO stat_bot_guilds (action) VALUES ('remove');", False)
+    elif guild_count > guild_count_db:
+        diff = guild_count - guild_count_db
+        for count in range(diff):
+            await utils.execute_sql("INSERT INTO stat_bot_guilds (action) VALUES ('add');", False)
 
-        if utils.secret.secret == "master":
-            sites = assets.list_sites
+    if utils.secret.secret == "master":
+        sites = assets.list_sites
 
-            i = 0
-            while i < len(utils.secret.list_tokens):
-                sites[i].append(utils.secret.list_tokens[i])
-                i += 1
+        i = 0
+        while i < len(utils.secret.list_tokens):
+            sites[i].append(utils.secret.list_tokens[i])
+            i += 1
 
-            async def request(site, session):
-                try:
-                    async with session.post(url=site[2] % str(bot.user.id),
-                                            headers={'Authorization': site[4], 'Content-Type': 'application/json'},
-                                            json={site[3]: len(bot.guilds)}) as response:
-                        if response is None:
-                            site.append("request failed: No response")
-                        elif str(response.status).startswith("20"):
-                            if str(await response.text()).startswith('{"error":true,'):
-                                site.append("request failed: " + textwrap.shorten(str(await response.text()), width=50))
-                            else:
-                                site.append("request success")
+        async def request(site, session):
+            try:
+                async with session.post(url=site[2] % str(bot.user.id),
+                                        headers={'Authorization': site[4], 'Content-Type': 'application/json'},
+                                        json={site[3]: len(bot.guilds)}) as response:
+                    if response is None:
+                        site.append("request failed: No response")
+                    elif str(response.status).startswith("20"):
+                        if str(await response.text()).startswith('{"error":true,'):
+                            site.append("request failed: " + textwrap.shorten(str(await response.text()), width=50))
                         else:
-                            site.append("request failed: " + textwrap.shorten(str(response.status), width=50))
+                            site.append("request success")
+                    else:
+                        site.append("request failed: " + textwrap.shorten(str(response.status), width=50))
 
-                except Exception:
-                    site.append("request failed: Exception")
-                    trace = traceback.format_exc().rstrip("\n").split("\n")
-                    utils.on_error("request()", *trace)
+            except Exception:
+                site.append("request failed: Exception")
+                trace = traceback.format_exc().rstrip("\n").split("\n")
+                utils.on_error("request()", *trace)
 
-            async with aiohttp.ClientSession() as session1:
-                await asyncio.gather(*[asyncio.ensure_future(request(site, session1)) for site in sites], return_exceptions=True)
+        async with aiohttp.ClientSession() as session1:
+            await asyncio.gather(*[asyncio.ensure_future(request(site, session1)) for site in sites], return_exceptions=True)
 
-            status = []
-            for site in sites:
-                if site[-1].startswith("request failed"):
-                    status.append(site[0] + " " + site[-1].strip(".") + ".")
+        status = []
+        for site in sites:
+            if site[-1].startswith("request failed"):
+                status.append(site[0] + " " + site[-1].strip(".") + ".")
 
-            status.insert(0, f"Updated {len(sites) - len(status)}/{len(sites)} sites.")
+        status.insert(0, f"Updated {len(sites) - len(status)}/{len(sites)} sites.")
 
-            utils.log("info", f"Currently serving {str(guild_count)} guilds.", *status)
-    except Exception:
-        trace = traceback.format_exc().rstrip("\n").split("\n")
-        utils.on_error("update_guild_count()", *trace)
+        utils.log("info", f"Currently serving {str(guild_count)} guilds.", *status)
+
     await update_profile_picture()
 
 
 async def send_message(interaction, message=None, embed=None, delete=None):
-    try:
-        await interaction.response.send_message(content=message, embed=embed)
-        if delete is not None:
-            asyncio.ensure_future(send_message_delete(interaction, delete))
-    except Exception:
-        trace = traceback.format_exc().rstrip("\n").split("\n")
-        utils.on_error("send_message()", *trace)
+    if not interaction.response.is_done():
+        await interaction.response.send_message(content=message, embed=embed, delete_after=delete)
+    else:
+        await interaction.channel.send(content=message, embed=embed, delete_after=delete)
 
 
-async def send_message_delete(interaction, delete):
-    try:
-        await asyncio.sleep(delete)
-        await interaction.delete_original_response()
-    except discord.NotFound:
-        return
-    except Exception:
-        trace = traceback.format_exc().rstrip("\n").split("\n")
-        utils.on_error("send_message_delete()", *trace)
-
+async def send_error(interaction, error, delete=None):
+    message = "There has been a error.\n"\
+              "For further information contact the support.\n"\
+              "https://discord.gg/Da9haye\n"\
+              f"Your error code is **{error}**."
+    await send_message(interaction, message=message, delete=delete)
 
 asyncio.run(main())
