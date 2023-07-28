@@ -223,9 +223,16 @@ async def elevator_music(interaction: discord.Interaction):
 
         guild = await utils.execute_sql(f"SELECT * FROM set_guilds WHERE guild_id = {interaction.guild.id};", True)
         if guild[0][1] == 1:
-            await send_message(interaction, message="Can't play music:\nAlready playing music.", delete=10)
-            await utils.execute_sql("INSERT INTO stat_command_music (action) VALUES ('fault');", False)
-            return
+            if interaction.guild.voice_client is None or not interaction.guild.voice_client.is_connected() or not interaction.guild.voice_client.is_playing():
+                await send_message(interaction, message="On command:\nPure relaxation.", delete=10)
+                await play_music(interaction.guild)
+                utils.log("info", f"Successfully executed elevatormusic() on {interaction.guild.id}.")
+                await utils.execute_sql("INSERT INTO stat_command_music (action) VALUES ('executed');", False)
+                return
+            else:
+                await send_message(interaction, message="Can't play music:\nAlready playing music.", delete=10)
+                await utils.execute_sql("INSERT INTO stat_command_music (action) VALUES ('fault');", False)
+                return
 
         await send_message(interaction, message="On command:\nPure relaxation.", delete=10)
         await play_music(interaction.guild, interaction.user.voice.channel, still_playing=False)
@@ -310,7 +317,11 @@ async def play_music(guild, channel=None, still_playing=True):
             await stop_music(guild)
             return
         voice = guild.voice_client
+        utils.log("info", str(voice))
         if voice is None:
+            voice = await channel.connect(self_deaf=True)
+        if not voice.is_connected():
+            await voice.disconnect(force=True)
             voice = await channel.connect(self_deaf=True)
         if voice.channel != channel:
             await voice.move_to(channel)
@@ -334,8 +345,7 @@ async def play_music(guild, channel=None, still_playing=True):
 async def resume_music(guild):
     try:
         voice = guild.voice_client
-        # utils.log("info", f"{voice is not None}, {voice.is_playing()}, {voice.is_paused()}")
-        if voice is not None and voice.is_paused():
+        if voice is not None and voice.is_playing() and voice.is_paused():
             voice.resume()
             utils.log("info", f"Resumed playing on guild {str(guild.id)} in channel {str(voice.channel.id)}.")
     except Exception:
@@ -347,7 +357,7 @@ async def resume_music(guild):
 async def pause_music(guild):
     try:
         voice = guild.voice_client
-        if voice is not None:
+        if voice is not None and voice.is_playing() and not voice.is_paused():
             voice.pause()
             utils.log("info", f"Paused playing on guild {str(guild.id)} in channel {str(voice.channel.id)}.")
     except Exception:
