@@ -12,8 +12,7 @@ CREATE TABLE IF NOT EXISTS `set_guilds` (
   `guild_id` bigint(18) NOT NULL,
   `playing` tinyint(1) NOT NULL,
   `channel_id` bigint(18) DEFAULT NULL,
-  `disconnect_min` datetime DEFAULT NULL,
-  `disconnect_max` datetime DEFAULT NULL,
+  `playing_since` datetime DEFAULT NULL,
   PRIMARY KEY (`guild_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
