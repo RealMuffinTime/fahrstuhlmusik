@@ -35,6 +35,7 @@ from PIL import Image, ImageDraw, ImageFont
 #  - fix issues from changes in last release
 #  - Improved logic for pausing, resuming and restarting music
 #  - Improved message and error sending/handling
+#  - Moved `elevatorinfo` to an embed and updated the embeds
 # Known issues
 #  - disconnect by user is not handled correctly
 
@@ -148,10 +149,21 @@ async def on_voice_state_update(member, before, after):
 @bot.tree.command(name="elevatorinfo", description="Shows infos and help regarding the bot fahrstuhlmusik.")
 async def elevator_info(interaction: discord.Interaction):
     try:
+        if str(interaction.channel.type) == "private":
+            color = discord.Colour.random()
+        else:
+            color = interaction.channel.guild.me.color.value
+
+        embed = discord.Embed(colour=color)
+        embed.set_thumbnail(url=bot.user.avatar.url)
         commands = await bot.tree.fetch_commands()
-        message = assets.info_message % (commands[0].mention, commands[1].mention, commands[2].mention,
-                                         commands[3].mention, commands[4].mention, str(len(bot.guilds)), version)
-        await send_message(interaction, message=message)
+        embed.add_field(name="", value=assets.info_message_top, inline=False)
+        for command in range(len(assets.info_messages_mid)):
+            embed.add_field(name=commands[command].mention, value=assets.info_messages_mid[command])
+        embed.add_field(name="", value=assets.info_message_bottom % (str(len(bot.guilds)), version), inline=False)
+        embed.add_field(name="", value=f"[{bot.user.display_name} in the web](https://bots.muffintime.tk/{bot.user.display_name}/)", inline=False)
+
+        await send_message(interaction, embed=embed)
         utils.log("info", f"Successfully executed elevatorinfo() on {interaction.guild.id}.")
         await utils.execute_sql("INSERT INTO stat_command_info (action) VALUES ('executed');", False)
     except Exception:
@@ -169,16 +181,11 @@ async def elevator_review(interaction: discord.Interaction):
         else:
             color = interaction.channel.guild.me.color.value
 
-        embed = discord.Embed(title="Here you can review this bot and vote for it",
-                              description='Below you will find pages where the bot is listed.', colour=color)
-        embed.set_author(name=str(bot.user), url="https://bots.muffintime.tk/fahrstuhlmusik/")
-        embed.set_thumbnail(
-            url="https://cdn.discordapp.com/attachments/707514263077388320/730372388130258964/fahrstuhlmusik_logo.png")
-
+        embed = discord.Embed(description="Here you can review this bot and vote for it", colour=color)
+        embed.set_thumbnail(url=bot.user.avatar.url)
         for site in assets.list_sites:
-            embed.add_field(name=site[0], value=site[1], inline=True)
-            embed.add_field(name="\u200b", value="\u200b", inline=True)
-            embed.add_field(name="\u200b", value="\u200b", inline=True)
+            embed.add_field(name=site[0], value=site[1], inline=False)
+        embed.add_field(name="", value=f"[{bot.user.display_name} in the web](https://bots.muffintime.tk/{bot.user.display_name}/)", inline=False)
 
         await send_message(interaction, embed=embed)
         utils.log("info", f"Successfully executed elevatorreview() on {interaction.guild.id}.")
@@ -266,7 +273,7 @@ async def elevator_shutdown(interaction: discord.Interaction):
             await utils.execute_sql("INSERT INTO stat_command_shutdown (action) VALUES ('fault');", False)
             return
 
-        await send_message(interaction, message=":( but ok,\n I am going to stop.", delete=10)
+        await send_message(interaction, message="On command:\nNo more relaxation for you.", delete=10)
         await stop_music(interaction.guild)
         utils.log("info", f"Successfully executed elevatorshutdown() on {interaction.guild.id}.")
         await utils.execute_sql("INSERT INTO stat_command_shutdown (action) VALUES ('executed');", False)
@@ -287,7 +294,8 @@ def after_music(error, guild):
 async def play_music(guild, channel=None, still_playing=True):
     if channel:
         if still_playing:
-            await utils.execute_sql(f"UPDATE set_guilds SET playing = '1', channel_id = '{channel.id}' WHERE guild_id = '{guild.id}';", False)
+            await utils.execute_sql(f"UPDATE set_guilds SET playing = '1', channel_id = '{channel.id}' WHERE guild_id = '{guild.id}';",
+                                    False)
         else:
             await utils.execute_sql(f"UPDATE set_guilds SET playing = '1', channel_id = '{channel.id}', playing_since = '{datetime.datetime.now().replace(microsecond=0)}' WHERE guild_id = '{guild.id}';", False)
     else:
