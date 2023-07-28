@@ -26,20 +26,7 @@ from PIL import Image, ImageDraw, ImageFont
 # TODO open sauce
 # TODO donate command
 
-
-# Version 2.0.1 -> 2.0.2
-#
-# New stuff
-#  -
-# Changes
-#  - fix issues from changes in last release
-#  - Improved logic for pausing, resuming and restarting music
-#  - Improved message and error sending/handling
-#  - Moved `elevatorinfo` to an embed and updated the embeds
-# Known issues
-#  - disconnect by user is not handled correctly
-
-version = "2.0.1"
+version = "2.0.2"
 
 bot = discord.Client(
     description='Plays hours and hours elevator music.',

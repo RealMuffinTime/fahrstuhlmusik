@@ -1,3 +1,14 @@
+### Version 2.0.2 - 2023-07-28
+###### Changes
+- Fix issues from changes in last release
+- Improvements to the logging of the online status
+- Improved logic for pausing, resuming and restarting music
+- Improved message and error sending/handling
+- Moved `elevatorinfo` to an embed and updated the embeds
+- Update README.md
+###### Known issues
+- Disconnect by user is not handled correctly
+
 ### Version 2.0.1 - 2023-03-28
 ###### New stuff
 - The bot changes its profile picture with guild count
