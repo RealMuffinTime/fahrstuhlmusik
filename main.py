@@ -88,7 +88,7 @@ async def on_guild_join(guild):
 
 @bot.event
 async def on_guild_remove(guild):
-    error_guilds = [814476583347814430, 846765917505716254, 856861615667675156, 901538946222293002, 904222851647823873]
+    error_guilds = [814476583347814430]
     if guild.id in error_guilds:
         utils.log("info", f"Guild leave skipped for {str(guild.id)}.")
         return
@@ -103,17 +103,31 @@ async def on_voice_state_update(member, before, after):
     try:
         if member.id == bot.user.id:
             if before.channel is None:
+                if member.guild.me.voice is not None and not member.guild.me.voice.self_deaf:
+                    await member.guild.change_voice_state(channel=after.channel, self_deaf=True)
+                await resume_music(member.guild)
+                utils.log("info", f"Connect on guild {str(member.guild.id)}.")
+                if member.guild.id == 669895353557975080:
+                    channel = member.guild.get_channel(707514263077388320)
+                    await channel.send(content=f"Connect on 669895353557975080 <@412235309204635649>.")
+                elif member.guild.id == 1058006829302546554:
+                    channel = member.guild.get_channel(1058006830007206030)
+                    await channel.send(content=f"Connect on 1058006829302546554 <@412235309204635649>.")
                 return
-            if after.channel is not None:
-                if after.channel.permissions_for(member).connect is False:
-                    await play_music(member.guild, before.channel.id)
-                    return
+            if after.channel is None:
+                await pause_music(member.guild)
+                utils.log("info", f"Disconnect on guild {str(member.guild.id)}.")
+                if member.guild.id == 669895353557975080:
+                    channel = member.guild.get_channel(707514263077388320)
+                    await channel.send(content=f"Disconnect on 669895353557975080 <@412235309204635649>.")
+                elif member.guild.id == 1058006829302546554:
+                    channel = member.guild.get_channel(1058006830007206030)
+                    await channel.send(content=f"Disconnect on 1058006829302546554 <@412235309204635649>.")
+                return
             else:
-                if before.channel.permissions_for(member).connect is False:
-                    await stop_music(member.guild)
+                if after.channel.permissions_for(member).connect is False:
+                    await play_music(member.guild, before.channel)
                     return
-                utils.log("info", f"Reconnect on guild {str(member.guild.id)}.")
-                return
             if after.channel.id != before.channel.id:
                 await utils.execute_sql(f"UPDATE set_guilds SET channel_id = '{after.channel.id}' WHERE guild_id = '{member.guild.id}';", False)
                 await pause_music(member.guild)
@@ -214,7 +228,7 @@ async def elevator_music(interaction: discord.Interaction):
             return
 
         await send_message(interaction, message="On command:\nPure relaxation.", delete=10)
-        await play_music(interaction.guild, interaction.user.voice.channel.id, still_playing=False)
+        await play_music(interaction.guild, interaction.user.voice.channel, still_playing=False)
         utils.log("info", f"Successfully executed elevatormusic() on {interaction.guild.id}.")
         await utils.execute_sql("INSERT INTO stat_command_music (action) VALUES ('executed');", False)
 
@@ -278,17 +292,15 @@ async def play_music(guild, channel=None, still_playing=True):
 
     if channel:
         if still_playing:
-            await utils.execute_sql(f"UPDATE set_guilds SET playing = '1', channel_id = '{channel}' WHERE guild_id = '{guild.id}';", False)
+            await utils.execute_sql(f"UPDATE set_guilds SET playing = '1', channel_id = '{channel.id}' WHERE guild_id = '{guild.id}';", False)
         else:
-            await utils.execute_sql(f"UPDATE set_guilds SET playing = '1', channel_id = '{channel}', playing_since = '{datetime.datetime.now().replace(microsecond=0)}' WHERE guild_id = '{guild.id}';", False)
-        channel = bot.get_channel(channel)
+            await utils.execute_sql(f"UPDATE set_guilds SET playing = '1', channel_id = '{channel.id}', playing_since = '{datetime.datetime.now().replace(microsecond=0)}' WHERE guild_id = '{guild.id}';", False)
     else:
         row = await utils.execute_sql(f"SELECT * FROM set_guilds WHERE guild_id = {guild.id};", True)
         channel = bot.get_channel(row[0][2])
 
     if threading.active_count() > 80:  # not very nice workaround
         response = await utils.execute_sql(f"SELECT guild_id FROM set_guilds WHERE playing = 1 ORDER BY playing_since ASC LIMIT 1", True)
-        print(response)
         stop_guild = bot.get_guild(response[0][0])
         await stop_music(stop_guild)
         utils.log("info", f"Manually stopped {stop_guild.id}.")
@@ -302,8 +314,6 @@ async def play_music(guild, channel=None, still_playing=True):
             voice = await channel.connect(self_deaf=True)
         if voice.channel != channel:
             await voice.move_to(channel)
-        if not guild.me.voice.self_deaf:
-            await guild.change_voice_state(self_deaf=True)
         if voice.is_connected() and not voice.is_playing():
             # ffmpeg_options = {'before_options': '-stream_loop -1'}
             # audio_source = discord.FFmpegPCMAudio(f"audio_{utils.secret.secret}.mp3", **ffmpeg_options)
