@@ -13,8 +13,8 @@ from PIL import Image, ImageDraw, ImageFont
 
 # TODO fix cant start new thread -> shards?
 # TODO fix music stopping at some point
-# TODO fix status going away (^maybe they are connected)
-# TODO fix mute going away (could be fixed and not connected to the others)
+# TODO fix status going away
+# TODO fix mute going away
 # TODO fix disconnected by hand
 
 # TODO move to using only one music process
@@ -144,10 +144,13 @@ async def elevator_info(interaction: discord.Interaction):
         embed = discord.Embed(colour=color)
         embed.set_thumbnail(url=bot.user.avatar.url)
         commands = await bot.tree.fetch_commands()
-        embed.add_field(name="", value=assets.info_message_top, inline=False)
-        for command in range(len(assets.info_messages_mid)):
-            embed.add_field(name=commands[command].mention, value=assets.info_messages_mid[command])
-        embed.add_field(name="", value=assets.info_message_bottom % (str(len(bot.guilds)), version), inline=False)
+        embed.add_field(name="", value=assets.info_message[0], inline=False)
+        for command in range(len(assets.info_message) - 2):
+            embed.add_field(name=commands[command].mention, value=assets.info_message[command + 1])
+        guilds = str(len(bot.guilds))
+        start = str(int(utils.get_start_timestamp(raw=True).timestamp()))
+        session = str(utils.session_id)
+        embed.add_field(name="", value=assets.info_message[-1] % (guilds, version, start, session), inline=False)
         embed.add_field(name="", value=f"[{bot.user.display_name} in the web](https://bots.muffintime.tk/{bot.user.display_name}/)", inline=False)
 
         await send_message(interaction, embed=embed)

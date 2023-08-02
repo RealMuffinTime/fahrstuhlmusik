@@ -36,14 +36,14 @@ list_sites = [
     ]
 ]
 
-info_message_top = "A bot that plays **elevator music** for hours and hours.\n" \
-                   "For a support channel or even if you just like to listen to elevator music."
-info_messages_mid = ["`Shows this info.`",
-                     "`Starts playing elevator music in your channel.`",
-                     "`Also starts playing elevator music in your channel. :)`",
-                     "`You can rate and review the bot on different sites.`",
-                     "`The bot leaves the current channel.`"
-                     ]
-info_message_bottom = "Hope you have fun... with this bot.\n" \
-                      "Support & Bugs: https://discord.gg/Da9haye\n" \
-                      "Currently serving on **%s** guilds. Current version: **%s**."
+info_message = ["A bot that plays **elevator music** for hours and hours.\n"
+                "For a support channel or even if you just like to listen to elevator music.",
+                "`Shows this info.`",
+                "`Starts playing elevator music in your channel.`",
+                "`Also starts playing elevator music in your channel. :)`",
+                "`You can rate and review the bot on different sites.`",
+                "`The bot leaves the current channel.`",
+                "Hope you have fun... with this bot.\n"
+                "Support & Bugs: https://discord.gg/Da9haye\n"
+                "Currently serving on **%s** guilds. Current version: **%s**.\n"
+                "Bot started <t:%s:R>, in session %s."]
