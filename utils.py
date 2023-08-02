@@ -11,11 +11,13 @@ start_timestamp = None
 session_id = None
 
 
-def get_start_timestamp():
+def get_start_timestamp(raw=False):
     global start_timestamp
     if start_timestamp is None:
-        start_timestamp = str(datetime.datetime.now().replace(microsecond=0))
-    return start_timestamp
+        start_timestamp = datetime.datetime.now().replace(microsecond=0)
+    if raw:
+        return start_timestamp
+    return str(start_timestamp)
 
 
 def get_curr_timestamp(raw=False):
