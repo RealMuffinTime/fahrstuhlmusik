@@ -13,8 +13,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 # TODO fix cant start new thread -> shards?
 # TODO fix music stopping at some point
-# TODO fix status going away
-# TODO fix mute going away
+# TODO fix status going away (maybe fixed)
 # TODO fix disconnected by hand
 
 # TODO move to using only one music process
@@ -29,6 +28,7 @@ from PIL import Image, ImageDraw, ImageFont
 version = "2.0.2"
 
 bot = discord.Client(
+    activity=discord.Activity(name="/elevatorinfo", type=discord.ActivityType.listening),
     description='Plays hours and hours elevator music.',
     intents=discord.Intents.default(),
     owner_id=412235309204635649
@@ -47,7 +47,6 @@ async def main():
 @bot.event
 async def on_ready():
     utils.log("info", f"Logged in as {str(bot.user)}, on version {version}, in session {str(utils.session_id)}.")
-    await bot.change_presence(activity=discord.Activity(name="/elevatorinfo", type=discord.ActivityType.listening))
 
     for guild in bot.guilds:
         await utils.execute_sql(f"INSERT IGNORE INTO set_guilds VALUES ('{guild.id}', '0', NULL, NULL)", False)
