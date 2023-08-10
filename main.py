@@ -363,7 +363,7 @@ async def update_profile_picture():
 
         draw_img = ImageDraw.Draw(img)
 
-        if utils.secret.secret == "master":
+        if utils.secret.secret == "production":
             fill = (255, 34, 65)
         else:
             fill = (150, 150, 150)
@@ -394,7 +394,7 @@ async def update_guild_count():
         for count in range(diff):
             await utils.execute_sql("INSERT INTO stat_bot_guilds (action) VALUES ('add');", False)
 
-    if utils.secret.secret == "master":
+    if utils.secret.secret == "production":
         sites = assets.list_sites
 
         i = 0

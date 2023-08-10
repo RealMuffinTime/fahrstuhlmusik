@@ -104,8 +104,8 @@ for file in os.listdir(os.getcwd()):
         if file.startswith("secret_dev"):
             import secret_dev as secret
             break
-        elif file.startswith("secret_master"):
-            import secret_master as secret
+        elif file.startswith("secret_production"):
+            import secret_production as secret
             break
         else:
             class secret:

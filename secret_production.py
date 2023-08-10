@@ -1,5 +1,4 @@
-secret = "master"
-bot_id = ""
+secret = "production"
 bot_token = ""
 database_host = ""
 database_port = 3306
