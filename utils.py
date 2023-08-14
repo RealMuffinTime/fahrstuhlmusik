@@ -99,4 +99,7 @@ async def startup():
     await execute_sql(f"INSERT INTO stat_bot_online (startup, last_heartbeat) VALUES ('{get_start_timestamp()}', '{get_curr_timestamp()}')", False)
     session_id = (await execute_sql("SELECT * FROM stat_bot_online ORDER BY id DESC LIMIT 1", True))[0][0]
 
+if not os.path.exists("log"):
+    os.makedirs("log")
+
 asyncio.run(startup())
