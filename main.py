@@ -382,60 +382,65 @@ async def update_profile_picture():
 
 
 async def update_guild_count():
-    guild_count = len(bot.guilds)
-    guild_count_db = len(
-        await utils.execute_sql("SELECT * FROM stat_bot_guilds WHERE action = 'add';", True)) - len(
-        await utils.execute_sql("SELECT * FROM stat_bot_guilds WHERE action = 'remove';", True))
-    if guild_count < guild_count_db:
-        diff = guild_count_db - guild_count
-        for count in range(diff):
-            await utils.execute_sql("INSERT INTO stat_bot_guilds (action) VALUES ('remove');", False)
-    elif guild_count > guild_count_db:
-        diff = guild_count - guild_count_db
-        for count in range(diff):
-            await utils.execute_sql("INSERT INTO stat_bot_guilds (action) VALUES ('add');", False)
+    try:
+        guild_count = len(bot.guilds)
+        guild_count_db = len(
+            await utils.execute_sql("SELECT * FROM stat_bot_guilds WHERE action = 'add';", True)) - len(
+            await utils.execute_sql("SELECT * FROM stat_bot_guilds WHERE action = 'remove';", True))
+        if guild_count < guild_count_db:
+            diff = guild_count_db - guild_count
+            for count in range(diff):
+                await utils.execute_sql("INSERT INTO stat_bot_guilds (action) VALUES ('remove');", False)
+        elif guild_count > guild_count_db:
+            diff = guild_count - guild_count_db
+            for count in range(diff):
+                await utils.execute_sql("INSERT INTO stat_bot_guilds (action) VALUES ('add');", False)
 
-    if os.environ['BOT_ENVIR'] == "production":
-        sites = assets.list_sites
+        if os.environ['BOT_ENVIR'] == "production":
+            sites = assets.list_sites
 
-        i = 0
-        while i < len(assets.list_sites):
-            sites[i].append(os.environ['BOT_LIST_TOKENS'].split("|")[i])
-            i += 1
+            i = 0
+            while i < len(assets.list_sites):
+                sites[i].append(os.environ['BOT_LIST_TOKENS'].split("|")[i])
+                i += 1
 
-        async def request(site, session):
-            try:
-                async with session.post(url=site[2] % str(bot.user.id),
-                                        headers={'Authorization': site[4], 'Content-Type': 'application/json'},
-                                        json={site[3]: len(bot.guilds)}) as response:
-                    if response is None:
-                        site.append("request failed: No response")
-                    elif str(response.status).startswith("20"):
-                        if str(await response.text()).startswith('{"error":true,'):
-                            site.append("request failed: " + textwrap.shorten(str(await response.text()), width=50))
+            async def request(site, session):
+                try:
+                    async with session.post(url=site[2] % str(bot.user.id),
+                                            headers={'Authorization': site[4], 'Content-Type': 'application/json'},
+                                            json={site[3]: len(bot.guilds)}) as response:
+                        if response is None:
+                            site.append("request failed: No response")
+                        elif str(response.status).startswith("20"):
+                            if str(await response.text()).startswith('{"error":true,'):
+                                site.append("request failed: " + textwrap.shorten(str(await response.text()), width=50))
+                            else:
+                                site.append("request success")
                         else:
-                            site.append("request success")
-                    else:
-                        site.append("request failed: " + textwrap.shorten(str(response.status), width=50))
+                            site.append("request failed: " + textwrap.shorten(str(response.status), width=50))
 
-            except Exception:
-                site.append("request failed: Exception")
-                trace = traceback.format_exc().rstrip("\n").split("\n")
-                utils.on_error("request()", *trace)
+                except Exception:
+                    site.append("request failed: Exception")
+                    trace = traceback.format_exc().rstrip("\n").split("\n")
+                    utils.on_error("request()", *trace)
 
-        async with aiohttp.ClientSession() as session1:
-            await asyncio.gather(*[asyncio.ensure_future(request(site, session1)) for site in sites], return_exceptions=True)
+            async with aiohttp.ClientSession() as session1:
+                await asyncio.gather(*[asyncio.ensure_future(request(site, session1)) for site in sites], return_exceptions=True)
 
-        status = []
-        for site in sites:
-            if site[-1].startswith("request failed"):
-                status.append(site[0] + " " + site[-1].strip(".") + ".")
+            status = []
+            for site in sites:
+                if site[-1].startswith("request failed"):
+                    status.append(site[0] + " " + site[-1].strip(".") + ".")
 
-        status.insert(0, f"Updated {len(sites) - len(status)}/{len(sites)} sites.")
+            status.insert(0, f"Updated {len(sites) - len(status)}/{len(sites)} sites.")
 
-        utils.log("info", f"Currently serving {str(guild_count)} guilds.", *status)
+            utils.log("info", f"Currently serving {str(guild_count)} guilds.", *status)
 
-    await update_profile_picture()
+        await update_profile_picture()
+
+    except Exception:
+        trace = traceback.format_exc().rstrip("\n").split("\n")
+        utils.on_error("update_guild_count()", *trace)
 
 
 async def send_message(interaction, message=None, embed=None, delete=None):
