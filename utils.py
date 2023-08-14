@@ -41,7 +41,7 @@ def log(status, *messages):
             if status == "info":
                 status_prefix = "[%s INFO] "
             print(status_prefix % get_curr_timestamp() + message)
-            log_file = open(f"log/{secret.secret}_{get_start_timestamp().replace(' ', '_').replace(':', '-')}.txt",
+            log_file = open(f"log/{os.environ['BOT_ENVIR']}_{get_start_timestamp().replace(' ', '_').replace(':', '-')}.txt",
                             "a", encoding="utf8")
             log_file.write(status_prefix % get_curr_timestamp() + message + "\n")
             log_file.close()
@@ -57,10 +57,10 @@ def get_db_connection():
     if db_connection is None:
         try:
             db_connection = mariadb.connect(
-                user=secret.database_user,
-                password=secret.database_pass,
-                host=secret.database_host,
-                port=secret.database_port
+                user=os.environ['BOT_DATABASE_USER'],
+                password=os.environ['BOT_DATABASE_PASS'],
+                host=os.environ['BOT_DATABASE_HOST'],
+                port=int(os.environ['BOT_DATABASE_PORT'])
             )
             db_connection.auto_reconnect = True
         except Exception:
@@ -72,7 +72,7 @@ def get_db_connection():
 async def execute_sql(sql_term, fetch):
     try:
         cursor = get_db_connection().cursor(buffered=True)
-        cursor.execute(f"USE `{secret.database_name}`")
+        cursor.execute(f"USE `{os.environ['BOT_DATABASE_NAME']}`")
         if session_id is not None:
             cursor.execute(f"SELECT last_heartbeat FROM stat_bot_online WHERE id = '{session_id}'")
             last_heartbeat = cursor.fetchall()[0][0]
@@ -98,20 +98,5 @@ async def startup():
     global session_id
     await execute_sql(f"INSERT INTO stat_bot_online (startup, last_heartbeat) VALUES ('{get_start_timestamp()}', '{get_curr_timestamp()}')", False)
     session_id = (await execute_sql("SELECT * FROM stat_bot_online ORDER BY id DESC LIMIT 1", True))[0][0]
-
-for file in os.listdir(os.getcwd()):
-    if file.startswith("secret_") and file.endswith(".py"):
-        if file.startswith("secret_dev"):
-            import secret_dev as secret
-            break
-        elif file.startswith("secret_production"):
-            import secret_production as secret
-            break
-        else:
-            class secret:
-                secret = "secret"
-
-            log("error", "No secret file found exiting.")
-            exit()
 
 asyncio.run(startup())

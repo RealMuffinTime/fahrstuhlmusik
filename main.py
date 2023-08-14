@@ -4,6 +4,7 @@ import assets
 import datetime
 import discord
 import io
+import os
 import textwrap
 import threading
 import traceback
@@ -12,7 +13,7 @@ from discord import app_commands
 from PIL import Image, ImageDraw, ImageFont
 
 # TODO fix cant start new thread -> shards?
-# TODO fix music stopping at some point
+# TODO fix music stopping at some point (maybe fixed)
 # TODO fix status going away (maybe fixed)
 # TODO fix disconnected by hand
 
@@ -41,7 +42,7 @@ last_profile_update = datetime.datetime.min
 
 async def main():
     async with bot:
-        await bot.start(utils.secret.bot_token)
+        await bot.start(os.environ['BOT_TOKEN'])
 
 
 @bot.event
@@ -312,8 +313,8 @@ async def play_music(guild, channel=None, still_playing=True):
         await voice.move_to(channel)
     if voice.is_connected() and not voice.is_playing():
         # ffmpeg_options = {'before_options': '-stream_loop -1'}
-        # audio_source = discord.FFmpegPCMAudio(f"audio_{utils.secret.secret}.mp3", **ffmpeg_options)
-        audio_source = discord.FFmpegPCMAudio(f"audio_{utils.secret.secret}.mp3")
+        # audio_source = discord.FFmpegPCMAudio(f"audio_{os.environ['BOT_ENVIR']}.mp3", **ffmpeg_options)
+        audio_source = discord.FFmpegPCMAudio(f"audio_{os.environ['BOT_ENVIR']}.mp3")
         voice.play(audio_source, after=lambda error: after_music(error, guild))
         utils.log("info", f"Playing file on guild {guild.id}, active threads: {threading.active_count()}.")
         voice.source.volume = 0.3
@@ -355,7 +356,7 @@ async def stop_music(guild):
 async def update_profile_picture():
     global last_profile_update
     if datetime.datetime.now() - last_profile_update > datetime.timedelta(days=1):
-        img = Image.open(f"fahrstuhlmusik_{utils.secret.secret}.png")
+        img = Image.open(f"fahrstuhlmusik_{os.environ['BOT_ENVIR']}.png")
 
         font = ImageFont.truetype("bahnschrift.ttf", size=80)
 
@@ -363,7 +364,7 @@ async def update_profile_picture():
 
         draw_img = ImageDraw.Draw(img)
 
-        if utils.secret.secret == "production":
+        if os.environ['BOT_ENVIR'] == "production":
             fill = (255, 34, 65)
         else:
             fill = (150, 150, 150)
@@ -394,12 +395,12 @@ async def update_guild_count():
         for count in range(diff):
             await utils.execute_sql("INSERT INTO stat_bot_guilds (action) VALUES ('add');", False)
 
-    if utils.secret.secret == "production":
+    if os.environ['BOT_ENVIR'] == "production":
         sites = assets.list_sites
 
         i = 0
-        while i < len(utils.secret.list_tokens):
-            sites[i].append(utils.secret.list_tokens[i])
+        while i < len(assets.list_sites):
+            sites[i].append(os.environ['BOT_LIST_TOKENS'].split("|")[i])
             i += 1
 
         async def request(site, session):
