@@ -14,7 +14,6 @@ from PIL import Image, ImageDraw, ImageFont
 
 # TODO fix cant start new thread -> shards?
 # TODO fix music stopping at some point (maybe fixed)
-# TODO fix status going away (maybe fixed)
 # TODO fix disconnected by hand
 
 # TODO move to using only one music process
@@ -28,8 +27,10 @@ from PIL import Image, ImageDraw, ImageFont
 
 version = "2.0.2"
 
+activity = discord.Activity(name="/elevatorinfo", type=discord.ActivityType.listening)
+
 bot = discord.Client(
-    activity=discord.Activity(name="/elevatorinfo", type=discord.ActivityType.listening),
+    activity=activity,
     description='Plays hours and hours elevator music.',
     intents=discord.Intents.default(),
     owner_id=412235309204635649
@@ -48,6 +49,8 @@ async def main():
 @bot.event
 async def on_ready():
     utils.log("info", f"Logged in as {str(bot.user)}, on version {version}, in session {str(utils.session_id)}.")
+
+    await bot.change_presence(activity=activity)
 
     for guild in bot.guilds:
         await utils.execute_sql(f"INSERT IGNORE INTO set_guilds VALUES ('{guild.id}', '0', NULL, NULL)", False)
@@ -74,6 +77,7 @@ async def on_guild_join(guild):
     await utils.execute_sql("INSERT INTO stat_bot_guilds (action) VALUES ('add');", False)
     utils.log("info", f"Guild join {str(guild.id)}.")
     await update_guild_count()
+    await bot.change_presence(activity=activity)
 
 
 @bot.event
@@ -86,6 +90,7 @@ async def on_guild_remove(guild):
     await utils.execute_sql("INSERT INTO stat_bot_guilds (action) VALUES ('remove');", False)
     utils.log("info", f"Guild leave {str(guild.id)}.")
     await update_guild_count()
+    await bot.change_presence(activity=activity)
 
 
 @bot.event
