@@ -37,7 +37,7 @@ list_sites = [
 ]
 
 info_message = ["A bot that plays **elevator music** for hours and hours.\n"
-                "For a support channel or even if you just like to listen to elevator music.",
+                "For a support channel or even if you just like to listen to elevator music.\n\u200b",
                 "```Shows infos, stats and help about the bot.```",
                 "```Plays elevator music in your channel.```",
                 "```Plays elevator music in your channel.```",
