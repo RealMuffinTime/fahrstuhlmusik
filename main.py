@@ -25,7 +25,7 @@ from PIL import Image, ImageDraw, ImageFont
 # TODO open sauce
 # TODO donate command
 
-version = "2.0.2"
+version = "2.0.3"
 
 activity = discord.Activity(name="/elevatorinfo", type=discord.ActivityType.listening)
 

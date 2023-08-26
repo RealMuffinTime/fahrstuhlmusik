@@ -1,3 +1,17 @@
+### Version 2.0.3 - 2023-08-26
+###### Changes
+- Potential fix for activity status going away
+- Add more information to `elevatorinfo`
+###### Internal Changes
+- add raw return for start_timestamp
+- replace master with production
+- add activity setup to client init and guild_add/remove
+- store secrets in environment variables
+- create log folder automatically
+- add missing try except clause
+###### Known issues
+- Disconnect by user is not handled correctly
+
 ### Version 2.0.2 - 2023-07-28
 ###### Changes
 - Fix issues from changes in last release
