@@ -102,22 +102,10 @@ async def on_voice_state_update(member, before, after):
                     await member.guild.change_voice_state(channel=after.channel, self_deaf=True)
                 await resume_music(member.guild)
                 utils.log("info", f"Connect on guild {str(member.guild.id)}.")
-                if member.guild.id == 669895353557975080:
-                    channel = member.guild.get_channel(707514263077388320)
-                    await channel.send(content=f"Connect on 669895353557975080 <@412235309204635649>.")
-                elif member.guild.id == 1058006829302546554:
-                    channel = member.guild.get_channel(1058006830007206030)
-                    await channel.send(content=f"Connect on 1058006829302546554 <@412235309204635649>.")
                 return
             if after.channel is None:
                 await pause_music(member.guild)
                 utils.log("info", f"Disconnect on guild {str(member.guild.id)}.")
-                if member.guild.id == 669895353557975080:
-                    channel = member.guild.get_channel(707514263077388320)
-                    await channel.send(content=f"Disconnect on 669895353557975080 <@412235309204635649>.")
-                elif member.guild.id == 1058006829302546554:
-                    channel = member.guild.get_channel(1058006830007206030)
-                    await channel.send(content=f"Disconnect on 1058006829302546554 <@412235309204635649>.")
                 return
             else:
                 if after.channel.permissions_for(member).connect is False:
@@ -156,7 +144,7 @@ async def elevator_info(interaction: discord.Interaction):
         start = str(int(utils.get_start_timestamp(raw=True).timestamp()))
         session = str(utils.session_id)
         embed.add_field(name="", value=assets.info_message[-1] % (guilds, version, start, session), inline=False)
-        embed.add_field(name="", value=f"[{bot.user.display_name} in the web](https://bots.muffintime.tk/{bot.user.display_name}/)", inline=False)
+        embed.add_field(name="", value=f"[{bot.user.display_name} in the web](https://bots.muffintime.tk/{bot.user.display_name.replace(' ', '%20')}/)", inline=False)
 
         await send_message(interaction, embed=embed)
         utils.log("info", f"Successfully executed elevatorinfo() on {interaction.guild.id}.")
