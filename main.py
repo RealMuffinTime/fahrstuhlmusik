@@ -22,7 +22,6 @@ from PIL import Image, ImageDraw, ImageFont
 # TODO website, statistics and leaderboard
 # TODO move command - own channel which moves down and up (this one moves users form one to another channel, plays fitting sounds (door closes/opens, moving, elevator music) at the end it moves to its saved channel)
 #
-# TODO open sauce
 # TODO donate command
 
 version = "2.0.3"

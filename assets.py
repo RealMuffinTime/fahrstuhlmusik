@@ -11,7 +11,7 @@ list_sites = [
         "Discords",
         "[View](https://discords.com/bots/bot/669888310507995136) --- "
         "[Vote](https://discords.com/bots/bot/669888310507995136/vote)",
-        "https://discords.com/bots/api/bot/%s",
+        "https://discords.com/bots/api/bot/%s/setservers",
         "server_count"
     ],
     [
