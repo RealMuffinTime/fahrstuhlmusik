@@ -19,7 +19,7 @@ from PIL import Image, ImageDraw, ImageFont
 # TODO move to using only one music process
 # TODO use different music files, pick random, licensed, easter eggs
 #
-# TODO website, statistics and leaderboard
+# TODO website, statistics wip and leaderboard
 # TODO move command - own channel which moves down and up (this one moves users form one to another channel, plays fitting sounds (door closes/opens, moving, elevator music) at the end it moves to its saved channel)
 #
 # TODO donate command
@@ -127,6 +127,7 @@ async def on_voice_state_update(member, before, after):
 
 @bot.tree.command(name="elevatorinfo", description="Shows infos and help regarding the bot fahrstuhlmusik.")
 async def elevator_info(interaction: discord.Interaction):
+    status = "ongoing"
     try:
         if str(interaction.channel.type) == "private":
             color = discord.Colour.random()
@@ -147,16 +148,19 @@ async def elevator_info(interaction: discord.Interaction):
 
         await send_message(interaction, embed=embed)
         utils.log("info", f"Successfully executed elevatorinfo() on {interaction.guild.id}.")
-        await utils.execute_sql("INSERT INTO stat_command_info (action) VALUES ('executed');", False)
+        status = "success"
     except Exception:
         trace = traceback.format_exc().rstrip("\n").split("\n")
         await send_error(interaction, error=utils.on_error('elevator_info()', *trace))
         utils.log("info", f"Thrown an error while executing elevatorinfo() on {interaction.guild.id}.")
-        await utils.execute_sql("INSERT INTO stat_command_info (action) VALUES ('error');", False)
+        status = "error"
+
+    await utils.stat_bot_commands("elevatorinfo", status, interaction.user.id, interaction.guild.id)
 
 
 @bot.tree.command(name="elevatorreview", description="You can rate and review the bot on different sites.")
 async def elevator_review(interaction: discord.Interaction):
+    status = "ongoing"
     try:
         if str(interaction.channel.type) == "private":
             color = discord.Colour.random()
@@ -171,40 +175,41 @@ async def elevator_review(interaction: discord.Interaction):
 
         await send_message(interaction, embed=embed)
         utils.log("info", f"Successfully executed elevatorreview() on {interaction.guild.id}.")
-        await utils.execute_sql("INSERT INTO stat_command_review (action) VALUES ('executed');", False)
+        status = "success"
     except Exception:
         trace = traceback.format_exc().rstrip("\n").split("\n")
         await send_error(interaction, error=utils.on_error('elevator_review()', *trace))
         utils.log("info", f"Thrown an error while executing elevatorreview() on {interaction.guild.id}.")
-        await utils.execute_sql("INSERT INTO stat_command_review (action) VALUES ('error');", False)
+        status = "error"
+
+    await utils.stat_bot_commands("elevatorreview", status, interaction.user.id, interaction.guild.id)
 
 
 @bot.tree.command(name="elevatormusic", description="Starts playing elevator music in your channel.")
 async def elevator_music_command(interaction: discord.Interaction):
-    await elevator_music(interaction)
+    status = await elevator_music(interaction)
+    await utils.stat_bot_commands("elevatormusic", status, interaction.user.id, interaction.guild.id)
 
 
 @bot.tree.command(name="fahrstuhlmusik", description="Also starts playing elevator music in your channel. :)")
 async def fahrstuhlmusik_command(interaction: discord.Interaction):
-    await elevator_music(interaction)
+    status = await elevator_music(interaction)
+    await utils.stat_bot_commands("fahrstuhlmusik", status, interaction.user.id, interaction.guild.id)
 
 
 async def elevator_music(interaction: discord.Interaction):
     try:
         if str(interaction.channel.type) == "private":
             await send_message(interaction, message="Can't play music:\nThis command doesn't work in DMs.", delete=10)
-            await utils.execute_sql("INSERT INTO stat_command_music (action) VALUES ('fault');", False)
-            return
+            return "fault"
 
         if interaction.user.voice is None:
             await send_message(interaction, message="Can't play music:\nYou are not in a voice channel.", delete=10)
-            await utils.execute_sql("INSERT INTO stat_command_music (action) VALUES ('fault');", False)
-            return
+            return "fault"
 
         if interaction.user.voice.channel.permissions_for(interaction.user.guild.me).connect is False:
             await send_message(interaction, message="Can't play music:\nCan't access your voice channel.", delete=10)
-            await utils.execute_sql("INSERT INTO stat_command_music (action) VALUES ('fault');", False)
-            return
+            return "fault"
 
         guild = await utils.execute_sql(f"SELECT * FROM set_guilds WHERE guild_id = {interaction.guild.id};", True)
         if guild[0][1] == 1:
@@ -212,59 +217,57 @@ async def elevator_music(interaction: discord.Interaction):
                 await send_message(interaction, message="On command:\nPure relaxation.", delete=10)
                 await play_music(interaction.guild)
                 utils.log("info", f"Successfully executed elevatormusic() on {interaction.guild.id}.")
-                await utils.execute_sql("INSERT INTO stat_command_music (action) VALUES ('executed');", False)
-                return
+                return "success"
             else:
                 await send_message(interaction, message="Can't play music:\nAlready playing music.", delete=10)
-                await utils.execute_sql("INSERT INTO stat_command_music (action) VALUES ('fault');", False)
-                return
+                return "fault"
 
         await send_message(interaction, message="On command:\nPure relaxation.", delete=10)
         await play_music(interaction.guild, interaction.user.voice.channel, still_playing=False)
         utils.log("info", f"Successfully executed elevatormusic() on {interaction.guild.id}.")
-        await utils.execute_sql("INSERT INTO stat_command_music (action) VALUES ('executed');", False)
+        return "success"
 
     except Exception:
         trace = traceback.format_exc().rstrip("\n").split("\n")
         await send_error(interaction, error=utils.on_error('elevator_music()', *trace))
         utils.log("info", f"Thrown an error while executing elevatormusic() on {interaction.guild.id}.")
-        await utils.execute_sql("INSERT INTO stat_command_music (action) VALUES ('error');", False)
+        return "error"
 
 
 @bot.tree.command(name="elevatorshutdown", description="The bot stops playing music.")
 async def elevator_shutdown(interaction: discord.Interaction):
+    status = "ongoing"
     try:
         if str(interaction.channel.type) == "private":
             await send_message(interaction, message="Can't shutdown:\nThis command doesn't work in DMs.", delete=10)
-            await utils.execute_sql("INSERT INTO stat_command_shutdown (action) VALUES ('fault');", False)
-            return
+            status = "fault"
 
         guild = await utils.execute_sql(f"SELECT * FROM set_guilds WHERE guild_id = {interaction.guild.id};", True)
-        if guild[0][1] == 0:
+        if status != "fault" and guild[0][1] == 0:
             await send_message(interaction, message="Can't shutdown:\nI am not playing music.", delete=10)
-            await utils.execute_sql("INSERT INTO stat_command_shutdown (action) VALUES ('fault');", False)
-            return
+            status = "fault"
 
-        if interaction.user.voice is None:
+        if status != "fault" and interaction.user.voice is None:
             await send_message(interaction, message="Can't shutdown:\nYou are not in a voice channel.", delete=10)
-            await utils.execute_sql("INSERT INTO stat_command_shutdown (action) VALUES ('fault');", False)
-            return
+            status = "fault"
 
-        if interaction.user.voice.channel.id != guild[0][2]:
+        if status != "fault" and interaction.user.voice.channel.id != guild[0][2]:
             await send_message(interaction, message="Can't shutdown:\nYou are not in my voice channel.", delete=10)
-            await utils.execute_sql("INSERT INTO stat_command_shutdown (action) VALUES ('fault');", False)
-            return
+            status = "fault"
 
-        await send_message(interaction, message="On command:\nNo more relaxation for you.", delete=10)
-        await stop_music(interaction.guild)
-        utils.log("info", f"Successfully executed elevatorshutdown() on {interaction.guild.id}.")
-        await utils.execute_sql("INSERT INTO stat_command_shutdown (action) VALUES ('executed');", False)
+        if status != "fault":
+            await send_message(interaction, message="On command:\nNo more relaxation for you.", delete=10)
+            await stop_music(interaction.guild)
+            utils.log("info", f"Successfully executed elevatorshutdown() on {interaction.guild.id}.")
+            status = "success"
 
     except Exception:
         trace = traceback.format_exc().rstrip("\n").split("\n")
         await send_error(interaction, error=utils.on_error('elevator_shutdown()', *trace))
         utils.log("info", f"Thrown an error while executing elevatorshutdown() on {interaction.guild.id}.")
-        await utils.execute_sql("INSERT INTO stat_command_shutdown (action) VALUES ('error');", False)
+        status = "fault"
+
+    await utils.stat_bot_commands("elevatorshutdown", status, interaction.user.id, interaction.guild.id)
 
 
 def after_music(error, guild):

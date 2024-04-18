@@ -45,5 +45,6 @@ info_message = ["A bot that plays **elevator music** for hours and hours.\n"
                 "```The bot leaves the current channel and stops playing.```",
                 "Hope you have fun... with this bot.\n"
                 "Support & Bugs: https://discord.gg/Da9haye\n"
+                "The bot is now also [open sauce](https://github.com/realmuffintime/fahrstuhlmusik).\n"
                 "Currently serving on %s guilds. Current version: %s.\n"
                 "Bot started <t:%s:R> in session %s."]

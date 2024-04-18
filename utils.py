@@ -32,6 +32,10 @@ def on_error(error_type, *messages):
     return error_uuid
 
 
+async def stat_bot_commands(command, status, user_id, guild_id):
+    await execute_sql(f"INSERT INTO stat_bot_commands (command, status, user_id, guild_id) VALUES ('{command}', '{status}', '{user_id}', '{guild_id}')", False)
+
+
 def log(status, *messages):
     for message in messages:
         try:

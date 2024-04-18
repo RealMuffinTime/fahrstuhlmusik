@@ -47,43 +47,17 @@ CREATE TABLE IF NOT EXISTS `stat_bot_online` (
 
 
 
--- stat_command_info
-CREATE TABLE IF NOT EXISTS `stat_command_info` (
+-- stat_bot_commands
+CREATE TABLE IF NOT EXISTS `stat_bot_commands` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `action` varchar(50) NOT NULL,
   `timestamp` datetime NOT NULL DEFAULT curtime(),
-  PRIMARY KEY (`id`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+  `command` varchar(50) NOT NULL,
+  `status` varchar(50) NOT NULL,
+  `user_id` varchar(50) DEFAULT NULL,
+  `guild_id` varchar(50) DEFAULT NULL,
 
-
-
--- stat_command_music
-CREATE TABLE IF NOT EXISTS `stat_command_music` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `action` varchar(50) NOT NULL,
-  `timestamp` datetime NOT NULL DEFAULT curtime(),
-  PRIMARY KEY (`id`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
-
-
-
--- stat_command_review
-CREATE TABLE IF NOT EXISTS `stat_command_review` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `action` varchar(50) NOT NULL,
-  `timestamp` datetime NOT NULL DEFAULT curtime(),
-  PRIMARY KEY (`id`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
-
-
-
--- stat_command_shutdown
-CREATE TABLE IF NOT EXISTS `stat_command_shutdown` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `action` varchar(50) NOT NULL,
-  `timestamp` datetime NOT NULL DEFAULT curtime(),
-  PRIMARY KEY (`id`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
 
