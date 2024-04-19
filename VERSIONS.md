@@ -3,12 +3,12 @@
 - Potential fix for activity status going away
 - Add more information to `elevatorinfo`
 ###### Internal Changes
-- add raw return for start_timestamp
-- replace master with production
-- add activity setup to client init and guild_add/remove
-- store secrets in environment variables
-- create log folder automatically
-- add missing try except clause
+- Add raw return for start_timestamp
+- Replace master with production
+- Add activity setup to client init and guild_add/remove
+- Store secrets in environment variables
+- Create log folder automatically
+- Add missing try except clause
 ###### Known issues
 - Disconnect by user is not handled correctly
 
