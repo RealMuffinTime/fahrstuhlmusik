@@ -1,4 +1,4 @@
-### Version 2.0.3 - 2023-08-26
+### Version [2.0.3](https://github.com/RealMuffinTime/fahrstuhlmusik/releases/tag/v2.0.3) - 2023-08-26
 ###### Changes
 - Potential fix for activity status going away
 - Add more information to `elevatorinfo`
@@ -12,7 +12,7 @@
 ###### Known issues
 - Disconnect by user is not handled correctly
 
-### Version 2.0.2 - 2023-07-28
+### Version [2.0.2](https://github.com/RealMuffinTime/fahrstuhlmusik/releases/tag/v2.0.2) - 2023-07-28
 ###### Changes
 - Fix issues from changes in last release
 - Improvements to the logging of the online status
@@ -23,7 +23,7 @@
 ###### Known issues
 - Disconnect by user is not handled correctly
 
-### Version 2.0.1 - 2023-03-28
+### Version [2.0.1](https://github.com/RealMuffinTime/fahrstuhlmusik/releases/tag/v2.0.1) - 2023-03-28
 ###### New stuff
 - The bot changes its profile picture with guild count
 ###### Changes
@@ -33,7 +33,7 @@
 ###### Known issues
 - Disconnect by user is not handled correctly
 
-### Version 2.0.0 - 2022-09-21
+### Version [2.0.0](https://github.com/RealMuffinTime/fahrstuhlmusik/releases/tag/v2.0.0) - 2022-09-21
 ###### New stuff
 - Bot does stay in VC when disconnected by hand
 ###### Breaking Changes

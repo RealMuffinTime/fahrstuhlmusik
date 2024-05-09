@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import aiohttp
 import assets
 import datetime
@@ -13,7 +14,6 @@ from discord import app_commands
 from PIL import Image, ImageDraw, ImageFont
 
 # TODO fix cant start new thread -> shards?
-# TODO fix disconnected by hand
 #
 # TODO move to using only one music process
 # TODO use different music files, pick random, licensed, easter eggs
@@ -23,7 +23,7 @@ from PIL import Image, ImageDraw, ImageFont
 #
 # TODO donate command
 
-version = "2.0.3"
+version = "v2.0.3"
 
 activity = discord.Activity(name="/elevatorinfo", type=discord.ActivityType.listening)
 
@@ -33,6 +33,9 @@ bot = discord.Client(
     intents=discord.Intents.default(),
     owner_id=412235309204635649
 )
+
+# TODO integrate discord.py logging
+# discord.utils.setup_logging(level=logging.DEBUG, root=False)
 
 bot.tree = app_commands.CommandTree(bot)
 
@@ -95,6 +98,7 @@ async def on_guild_remove(guild):
 async def on_voice_state_update(member, before, after):
     try:
         if member.id == bot.user.id:
+            utils.log("info", f"Active threads: {threading.active_count()}.")
             if before.channel is None:
                 if member.guild.me.voice is not None and not member.guild.me.voice.self_deaf:
                     await member.guild.change_voice_state(channel=after.channel, self_deaf=True)
@@ -102,6 +106,7 @@ async def on_voice_state_update(member, before, after):
                 utils.log("info", f"Connect on guild {str(member.guild.id)}.")
                 return
             if after.channel is None:
+                # TODO make stop_music after discord.py release
                 await pause_music(member.guild)
                 utils.log("info", f"Disconnect on guild {str(member.guild.id)}.")
                 return
@@ -286,7 +291,7 @@ async def play_music(guild, channel=None, still_playing=True):
         row = await utils.execute_sql(f"SELECT * FROM set_guilds WHERE guild_id = {guild.id};", True)
         channel = bot.get_channel(row[0][2])
 
-    if threading.active_count() > 80:  # not very nice workaround
+    if threading.active_count() > 80:  # TODO not very nice workaround
         response = await utils.execute_sql(f"SELECT guild_id FROM set_guilds WHERE playing = 1 ORDER BY playing_since ASC LIMIT 1", True)
         stop_guild = bot.get_guild(response[0][0])
         await stop_music(stop_guild)
@@ -300,6 +305,7 @@ async def play_music(guild, channel=None, still_playing=True):
     voice = guild.voice_client
     if voice is None:
         voice = await channel.connect(self_deaf=True)
+    # voice could be currently trying to connect, because of a prior disconnect
     if not voice.is_connected():
         await voice.disconnect(force=True)
         voice = await channel.connect(self_deaf=True)
