@@ -29,13 +29,11 @@ activity = discord.Activity(name="/elevatorinfo", type=discord.ActivityType.list
 
 bot = discord.Client(
     activity=activity,
-    description='Plays hours and hours elevator music.',
-    intents=discord.Intents.default(),
-    owner_id=412235309204635649
+    intents=discord.Intents.default()
 )
 
 # TODO integrate discord.py logging
-# discord.utils.setup_logging(level=logging.DEBUG, root=False)
+discord.utils.setup_logging(level=logging.INFO, root=False)
 
 bot.tree = app_commands.CommandTree(bot)
 
@@ -106,8 +104,7 @@ async def on_voice_state_update(member, before, after):
                 utils.log("info", f"Connect on guild {str(member.guild.id)}.")
                 return
             if after.channel is None:
-                # TODO make stop_music after discord.py release
-                await pause_music(member.guild)
+                await stop_music(member.guild)
                 utils.log("info", f"Disconnect on guild {str(member.guild.id)}.")
                 return
             else:
@@ -291,12 +288,6 @@ async def play_music(guild, channel=None, still_playing=True):
         row = await utils.execute_sql(f"SELECT * FROM set_guilds WHERE guild_id = {guild.id};", True)
         channel = bot.get_channel(row[0][2])
 
-    if threading.active_count() > 80:  # TODO not very nice workaround
-        response = await utils.execute_sql(f"SELECT guild_id FROM set_guilds WHERE playing = 1 ORDER BY playing_since ASC LIMIT 1", True)
-        stop_guild = bot.get_guild(response[0][0])
-        await stop_music(stop_guild)
-        utils.log("info", f"Manually stopped {stop_guild.id}.")
-
     utils.log("info", f"Active threads: {threading.active_count()}.")
 
     if channel is None or channel.permissions_for(guild.me).connect is False:
@@ -318,7 +309,7 @@ async def play_music(guild, channel=None, still_playing=True):
         voice.play(audio_source, after=lambda error: after_music(error, guild))
         utils.log("info", f"Playing file on guild {guild.id}, active threads: {threading.active_count()}.")
         voice.source.volume = 0.3
-        if still_playing is False:
+        if not still_playing:
             utils.log("info", f"Started playing on guild {str(guild.id)} in channel {str(channel.id)}.")
         if len(channel.voice_states.keys()) <= 1 and not voice.is_paused():
             await pause_music(guild)

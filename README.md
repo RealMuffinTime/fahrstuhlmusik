@@ -29,5 +29,3 @@ To run the bot yourself you need to set environment variables. As example: `BOT_
 - With `BOT_DATABASE_PASS` you set the password for the user to connect to your database.
 - With `BOT_DATABASE_NAME` you set the database name you will be using.
 - With `BOT_LIST_TOKENS` you set token for sites listed in [assets.py](assets.py), separated by `|`.
-
-*© 2020 - 2024*
